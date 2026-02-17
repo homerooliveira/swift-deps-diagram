@@ -183,8 +183,11 @@ func TestResolveAutoNoInputFound(t *testing.T) {
 	if !apperrors.IsKind(err, apperrors.KindInputNotFound) {
 		t.Fatalf("expected input not found kind, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "Package.swift not found") {
-		t.Fatalf("expected manifest failure context in error, got %q", err.Error())
+	if !strings.Contains(err.Error(), "no supported project markers found under") {
+		t.Fatalf("expected combined auto mode message, got %q", err.Error())
+	}
+	if strings.Contains(err.Error(), "Try --mode spm|xcode|bazel") {
+		t.Fatalf("did not expect mode hint in error, got %q", err.Error())
 	}
 }
 

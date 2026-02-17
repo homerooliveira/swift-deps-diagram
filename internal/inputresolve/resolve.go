@@ -125,8 +125,11 @@ func Resolve(req Request) (Resolved, error) {
 		}
 		return Resolved{}, apperrors.New(
 			apperrors.KindInputNotFound,
-			fmt.Sprintf("no .xcworkspace/.xcodeproj, bazel workspace markers, or Package.swift found under %s", absPath),
-			pkgErr,
+			fmt.Sprintf(
+				"no supported project markers found under %s (checked .xcworkspace/.xcodeproj, WORKSPACE/WORKSPACE.bazel/MODULE.bazel, and Package.swift)",
+				absPath,
+			),
+			nil,
 		)
 	default:
 		return Resolved{}, apperrors.New(apperrors.KindInvalidArgs, "unsupported mode", nil)
