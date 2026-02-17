@@ -32,7 +32,7 @@ Notes:
 Auto detect from current path:
 
 ```bash
-./swift-deps-diagram --path . --format both
+./swift-deps-diagram --path . --format png
 ```
 
 Force Xcode mode using a project:
@@ -50,5 +50,5 @@ Force SwiftPM mode even when Xcode files exist:
 Generate PNG from Xcode graph:
 
 ```bash
-./swift-deps-diagram --mode xcode --project /path/to/App.xcodeproj --format dot --output deps.dot --png-output deps.png
+./swift-deps-diagram --mode xcode --project /path/to/App.xcodeproj --format png --output deps.png --verbose
 ```

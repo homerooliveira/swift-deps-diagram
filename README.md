@@ -15,9 +15,9 @@ go build ./cmd/swift-deps-diagram
 ./swift-deps-diagram \
   --path /path/to/swift/package \
   --mode auto \
-  --format both \
-  --output deps.txt \
-  --png-output deps.png
+  --format png \
+  --output deps.png \
+  --verbose
 ```
 
 Flags:
@@ -25,9 +25,9 @@ Flags:
 - `--project` optional `.xcodeproj` path
 - `--workspace` optional `.xcworkspace` path
 - `--mode` `auto|spm|xcode` (default `auto`)
-- `--format` `mermaid|dot|both` (default `both`)
+- `--format` `mermaid|dot|png` (default `png`)
 - `--output` output file path (default stdout)
-- `--png-output` optional PNG output file generated with Graphviz `dot`
+- `--verbose` print generation details for file outputs
 - `--include-tests` include test targets
 
 Input detection in `auto` mode:
@@ -48,16 +48,16 @@ DOT only to file:
 ./swift-deps-diagram --format dot --output deps.dot
 ```
 
-Both formats to stdout:
+PNG using default output (`deps.png`):
 
 ```bash
-./swift-deps-diagram --format both
+./swift-deps-diagram --format png
 ```
 
-Generate Mermaid to stdout and PNG image at the same time:
+Verbose message when writing a file:
 
 ```bash
-./swift-deps-diagram --path ../Bump --format mermaid --png-output bump-deps.png
+./swift-deps-diagram --format dot --output deps.dot --verbose
 ```
 
 Use explicit Xcode project mode:

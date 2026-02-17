@@ -21,7 +21,7 @@ type cliOptions struct {
 	Mode          string
 	Format        string
 	Output        string
-	PNGOutput     string
+	Verbose       bool
 	IncludeTests  bool
 }
 
@@ -34,9 +34,9 @@ func parseFlags(args []string, stderr io.Writer) (cliOptions, error) {
 	fs.StringVar(&opts.ProjectPath, "project", "", "Optional .xcodeproj path")
 	fs.StringVar(&opts.WorkspacePath, "workspace", "", "Optional .xcworkspace path")
 	fs.StringVar(&opts.Mode, "mode", "auto", "Input mode: auto|spm|xcode")
-	fs.StringVar(&opts.Format, "format", "both", "Output format: mermaid|dot|both")
+	fs.StringVar(&opts.Format, "format", "png", "Output format: mermaid|dot|png")
 	fs.StringVar(&opts.Output, "output", "", "Output file path (defaults to stdout)")
-	fs.StringVar(&opts.PNGOutput, "png-output", "", "Optional PNG output path rendered using Graphviz dot")
+	fs.BoolVar(&opts.Verbose, "verbose", false, "Print generation details for file outputs")
 	fs.BoolVar(&opts.IncludeTests, "include-tests", false, "Include test targets in the graph")
 
 	if err := fs.Parse(args); err != nil {
@@ -44,9 +44,9 @@ func parseFlags(args []string, stderr io.Writer) (cliOptions, error) {
 	}
 
 	switch opts.Format {
-	case "mermaid", "dot", "both":
+	case "mermaid", "dot", "png":
 	default:
-		return cliOptions{}, apperrors.New(apperrors.KindInvalidArgs, "--format must be one of: mermaid|dot|both", nil)
+		return cliOptions{}, apperrors.New(apperrors.KindInvalidArgs, "--format must be one of: mermaid|dot|png", nil)
 	}
 	switch opts.Mode {
 	case "auto", "spm", "xcode":
@@ -78,7 +78,7 @@ func execute(args []string, stdout, stderr io.Writer) int {
 		Mode:          opts.Mode,
 		Format:        opts.Format,
 		OutputPath:    opts.Output,
-		PNGOutput:     opts.PNGOutput,
+		Verbose:       opts.Verbose,
 		IncludeTests:  opts.IncludeTests,
 	}, stdout)
 	if runErr != nil {

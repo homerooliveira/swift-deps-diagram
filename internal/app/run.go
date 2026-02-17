@@ -2,8 +2,9 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"io"
-	"strings"
+	"os"
 
 	apperrors "swift-deps-diagram/internal/errors"
 	"swift-deps-diagram/internal/graph"
@@ -27,6 +28,9 @@ var renderMermaid = render.Mermaid
 var renderDot = render.Dot
 var writeOutput = output.Write
 var writePNG = graphviz.WritePNG
+var logInfof = func(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
+}
 
 // Options configure one CLI execution.
 type Options struct {
@@ -36,7 +40,7 @@ type Options struct {
 	Mode          string
 	Format        string
 	OutputPath    string
-	PNGOutput     string
+	Verbose       bool
 	IncludeTests  bool
 }
 
@@ -54,29 +58,19 @@ func validateOptions(opts Options) error {
 		return apperrors.New(apperrors.KindInvalidArgs, "--project and --workspace cannot be used together", nil)
 	}
 	switch opts.Format {
-	case "mermaid", "dot", "both":
+	case "mermaid", "dot", "png":
 	default:
-		return apperrors.New(apperrors.KindInvalidArgs, "--format must be one of: mermaid|dot|both", nil)
+		return apperrors.New(apperrors.KindInvalidArgs, "--format must be one of: mermaid|dot|png", nil)
 	}
 	return nil
 }
 
-func renderOutput(g graph.Graph, format string) (string, error) {
+func renderTextOutput(g graph.Graph, format string) (string, error) {
 	switch format {
 	case "mermaid":
 		return renderMermaid(g)
 	case "dot":
 		return renderDot(g)
-	case "both":
-		mermaidOut, err := renderMermaid(g)
-		if err != nil {
-			return "", err
-		}
-		dotOut, err := renderDot(g)
-		if err != nil {
-			return "", err
-		}
-		return strings.Join([]string{mermaidOut, dotOut}, "\n\n---\n\n"), nil
 	default:
 		return "", apperrors.New(apperrors.KindInvalidArgs, "unsupported format", nil)
 	}
@@ -127,7 +121,25 @@ func Run(ctx context.Context, opts Options, stdout io.Writer) error {
 		return apperrors.New(apperrors.KindInvalidArgs, "unsupported resolved input mode", nil)
 	}
 
-	rendered, err := renderOutput(g, opts.Format)
+	if opts.Format == "png" {
+		dotOut, err := renderDot(g)
+		if err != nil {
+			return err
+		}
+		pngOutputPath := opts.OutputPath
+		if pngOutputPath == "" {
+			pngOutputPath = "deps.png"
+		}
+		if err := writePNG(ctx, dotOut, pngOutputPath); err != nil {
+			return err
+		}
+		if opts.Verbose {
+			logInfof("generated png using dot format at %s", pngOutputPath)
+		}
+		return nil
+	}
+
+	rendered, err := renderTextOutput(g, opts.Format)
 	if err != nil {
 		return err
 	}
@@ -135,13 +147,12 @@ func Run(ctx context.Context, opts Options, stdout io.Writer) error {
 	if err := writeOutput(rendered, opts.OutputPath, stdout); err != nil {
 		return err
 	}
-	if opts.PNGOutput != "" {
-		dotOut, err := renderDot(g)
-		if err != nil {
-			return err
-		}
-		if err := writePNG(ctx, dotOut, opts.PNGOutput); err != nil {
-			return err
+	if opts.Verbose && opts.OutputPath != "" {
+		switch opts.Format {
+		case "mermaid":
+			logInfof("generated mermaid content at %s", opts.OutputPath)
+		case "dot":
+			logInfof("generated dot content at %s", opts.OutputPath)
 		}
 	}
 

@@ -23,14 +23,14 @@ func TestParseFlagsDefaults(t *testing.T) {
 	if opts.Mode != "auto" {
 		t.Fatalf("expected default mode auto, got %q", opts.Mode)
 	}
-	if opts.Format != "both" {
-		t.Fatalf("expected default format both, got %q", opts.Format)
+	if opts.Format != "png" {
+		t.Fatalf("expected default format png, got %q", opts.Format)
 	}
 	if opts.Output != "" {
 		t.Fatalf("expected default output empty, got %q", opts.Output)
 	}
-	if opts.PNGOutput != "" {
-		t.Fatalf("expected default png output empty, got %q", opts.PNGOutput)
+	if opts.Verbose {
+		t.Fatalf("expected default verbose false")
 	}
 	if opts.IncludeTests {
 		t.Fatalf("expected default include-tests false")
@@ -59,14 +59,25 @@ func TestParseFlagsInvalidMode(t *testing.T) {
 	}
 }
 
-func TestParseFlagsPNGOutput(t *testing.T) {
+func TestParseFlagsVerbose(t *testing.T) {
 	var stderr bytes.Buffer
-	opts, err := parseFlags([]string{"--png-output", "diagram.png"}, &stderr)
+	opts, err := parseFlags([]string{"--verbose"}, &stderr)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
-	if opts.PNGOutput != "diagram.png" {
-		t.Fatalf("expected png output diagram.png, got %q", opts.PNGOutput)
+	if !opts.Verbose {
+		t.Fatal("expected verbose=true")
+	}
+}
+
+func TestParseFlagsRejectsPNGOutput(t *testing.T) {
+	var stderr bytes.Buffer
+	_, err := parseFlags([]string{"--png-output", "diagram.png"}, &stderr)
+	if err == nil {
+		t.Fatal("expected parse error for removed --png-output flag")
+	}
+	if !apperrors.IsKind(err, apperrors.KindInvalidArgs) {
+		t.Fatalf("expected invalid args kind, got %v", err)
 	}
 }
 
@@ -85,7 +96,7 @@ func TestExecuteMapsRuntimeErrorToExitCode2(t *testing.T) {
 	}
 }
 
-func TestExecutePassesPNGOutputToApp(t *testing.T) {
+func TestExecutePassesVerboseToApp(t *testing.T) {
 	oldRun := runApp
 	defer func() { runApp = oldRun }()
 
@@ -97,15 +108,15 @@ func TestExecutePassesPNGOutputToApp(t *testing.T) {
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	code := execute([]string{"--png-output", "graph.png"}, &stdout, &stderr)
+	code := execute([]string{"--verbose", "--format", "dot", "--output", "deps.dot"}, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("expected exit code 0, got %d", code)
 	}
-	if got.PNGOutput != "graph.png" {
-		t.Fatalf("expected png output graph.png, got %q", got.PNGOutput)
+	if !got.Verbose {
+		t.Fatal("expected verbose=true in app options")
 	}
-	if got.Mode != "auto" {
-		t.Fatalf("expected default mode auto in app options, got %q", got.Mode)
+	if got.Format != "dot" {
+		t.Fatalf("expected format dot, got %q", got.Format)
 	}
 }
 
@@ -116,7 +127,7 @@ func TestHelpTextIncludesFlags(t *testing.T) {
 		t.Fatal("expected help path to return error")
 	}
 	output := stderr.String()
-	for _, needle := range []string{"-path", "-project", "-workspace", "-mode", "-format", "-output", "-png-output", "-include-tests"} {
+	for _, needle := range []string{"-path", "-project", "-workspace", "-mode", "-format", "-output", "-verbose", "-include-tests"} {
 		if !bytes.Contains([]byte(output), []byte(needle)) {
 			t.Fatalf("help output missing %s", needle)
 		}

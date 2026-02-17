@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -26,8 +27,17 @@ func withManifestDir(t *testing.T) string {
 	return dir
 }
 
-func stubAppDeps(t *testing.T) *string {
+type appHarness struct {
+	textOutput  string
+	pngPath     string
+	pngDot      string
+	logMessages []string
+}
+
+func stubAppDeps(t *testing.T) *appHarness {
 	t.Helper()
+	h := &appHarness{}
+
 	oldResolve := resolveInput
 	oldDump := dumpPackage
 	oldDecode := decodeManifest
@@ -38,6 +48,7 @@ func stubAppDeps(t *testing.T) *string {
 	oldDot := renderDot
 	oldWrite := writeOutput
 	oldWritePNG := writePNG
+	oldLogInfof := logInfof
 	t.Cleanup(func() {
 		resolveInput = oldResolve
 		dumpPackage = oldDump
@@ -49,6 +60,7 @@ func stubAppDeps(t *testing.T) *string {
 		renderDot = oldDot
 		writeOutput = oldWrite
 		writePNG = oldWritePNG
+		logInfof = oldLogInfof
 	})
 
 	resolveInput = func(req inputresolve.Request) (inputresolve.Resolved, error) {
@@ -65,52 +77,77 @@ func stubAppDeps(t *testing.T) *string {
 	}
 	renderMermaid = func(graph.Graph) (string, error) { return "MERMAID", nil }
 	renderDot = func(graph.Graph) (string, error) { return "DOT", nil }
-
-	got := ""
 	writeOutput = func(content, _ string, _ io.Writer) error {
-		got = content
+		h.textOutput = content
 		return nil
 	}
-	writePNG = func(context.Context, string, string) error { return nil }
-	return &got
+	writePNG = func(_ context.Context, dotSource, outputPath string) error {
+		h.pngPath = outputPath
+		h.pngDot = dotSource
+		return nil
+	}
+	logInfof = func(format string, args ...interface{}) {
+		h.logMessages = append(h.logMessages, fmt.Sprintf(format, args...))
+	}
+
+	return h
 }
 
-func TestRunMermaidMode(t *testing.T) {
+func TestRunMermaidModeWritesText(t *testing.T) {
 	dir := withManifestDir(t)
-	got := stubAppDeps(t)
+	h := stubAppDeps(t)
 
 	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "mermaid"}, &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("unexpected run error: %v", err)
 	}
-	if *got != "MERMAID" {
-		t.Fatalf("expected MERMAID output, got %q", *got)
+	if h.textOutput != "MERMAID" {
+		t.Fatalf("expected MERMAID output, got %q", h.textOutput)
+	}
+	if h.pngPath != "" {
+		t.Fatalf("expected no png generation, got %q", h.pngPath)
 	}
 }
 
-func TestRunDotMode(t *testing.T) {
+func TestRunDotModeWritesText(t *testing.T) {
 	dir := withManifestDir(t)
-	got := stubAppDeps(t)
+	h := stubAppDeps(t)
 
 	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "dot"}, &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("unexpected run error: %v", err)
 	}
-	if *got != "DOT" {
-		t.Fatalf("expected DOT output, got %q", *got)
+	if h.textOutput != "DOT" {
+		t.Fatalf("expected DOT output, got %q", h.textOutput)
 	}
 }
 
-func TestRunBothModeSeparator(t *testing.T) {
+func TestRunPNGModeUsesDefaultOutputPath(t *testing.T) {
 	dir := withManifestDir(t)
-	got := stubAppDeps(t)
+	h := stubAppDeps(t)
 
-	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "both"}, &bytes.Buffer{})
+	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "png"}, &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("unexpected run error: %v", err)
 	}
-	if *got != "MERMAID\n\n---\n\nDOT" {
-		t.Fatalf("unexpected both output %q", *got)
+	if h.pngPath != "deps.png" {
+		t.Fatalf("expected default png path deps.png, got %q", h.pngPath)
+	}
+	if h.pngDot != "DOT" {
+		t.Fatalf("expected DOT source for png, got %q", h.pngDot)
+	}
+}
+
+func TestRunPNGModeUsesCustomOutputPath(t *testing.T) {
+	dir := withManifestDir(t)
+	h := stubAppDeps(t)
+
+	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "png", OutputPath: "out/custom.png"}, &bytes.Buffer{})
+	if err != nil {
+		t.Fatalf("unexpected run error: %v", err)
+	}
+	if h.pngPath != "out/custom.png" {
+		t.Fatalf("expected custom png path, got %q", h.pngPath)
 	}
 }
 
@@ -140,38 +177,68 @@ func TestRunDumpFailure(t *testing.T) {
 	}
 }
 
-func TestRunPNGOutputRequested(t *testing.T) {
+func TestRunVerboseMessageRules(t *testing.T) {
 	dir := withManifestDir(t)
-	stubAppDeps(t)
 
-	pngCalled := false
-	var gotPath string
-	var gotDot string
-	writePNG = func(_ context.Context, dotSource, outputPath string) error {
-		pngCalled = true
-		gotPath = outputPath
-		gotDot = dotSource
-		return nil
-	}
+	t.Run("mermaid_stdout_no_message", func(t *testing.T) {
+		h := stubAppDeps(t)
+		err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "mermaid", Verbose: true}, &bytes.Buffer{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(h.logMessages) != 0 {
+			t.Fatalf("expected no verbose messages, got %#v", h.logMessages)
+		}
+	})
 
-	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "mermaid", PNGOutput: "out/diagram.png"}, &bytes.Buffer{})
-	if err != nil {
-		t.Fatalf("unexpected run error: %v", err)
-	}
-	if !pngCalled {
-		t.Fatal("expected png generation to be called")
-	}
-	if gotPath != "out/diagram.png" {
-		t.Fatalf("unexpected png output path %q", gotPath)
-	}
-	if gotDot != "DOT" {
-		t.Fatalf("expected DOT source passed to png generator, got %q", gotDot)
-	}
+	t.Run("mermaid_file_message", func(t *testing.T) {
+		h := stubAppDeps(t)
+		err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "mermaid", OutputPath: "deps.mmd", Verbose: true}, &bytes.Buffer{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(h.logMessages) != 1 || h.logMessages[0] != "generated mermaid content at deps.mmd" {
+			t.Fatalf("unexpected messages %#v", h.logMessages)
+		}
+	})
+
+	t.Run("dot_file_message", func(t *testing.T) {
+		h := stubAppDeps(t)
+		err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "dot", OutputPath: "deps.dot", Verbose: true}, &bytes.Buffer{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(h.logMessages) != 1 || h.logMessages[0] != "generated dot content at deps.dot" {
+			t.Fatalf("unexpected messages %#v", h.logMessages)
+		}
+	})
+
+	t.Run("png_default_message", func(t *testing.T) {
+		h := stubAppDeps(t)
+		err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "png", Verbose: true}, &bytes.Buffer{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(h.logMessages) != 1 || h.logMessages[0] != "generated png using dot format at deps.png" {
+			t.Fatalf("unexpected messages %#v", h.logMessages)
+		}
+	})
+
+	t.Run("non_verbose_no_message", func(t *testing.T) {
+		h := stubAppDeps(t)
+		err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "png", OutputPath: "deps.png", Verbose: false}, &bytes.Buffer{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(h.logMessages) != 0 {
+			t.Fatalf("expected no messages, got %#v", h.logMessages)
+		}
+	})
 }
 
 func TestRunXcodeModeUsesXcodePipeline(t *testing.T) {
 	dir := withManifestDir(t)
-	got := stubAppDeps(t)
+	h := stubAppDeps(t)
 
 	resolveInput = func(inputresolve.Request) (inputresolve.Resolved, error) {
 		return inputresolve.Resolved{Mode: inputresolve.ModeXcode, ProjectPath: "/tmp/App.xcodeproj"}, nil
@@ -197,7 +264,7 @@ func TestRunXcodeModeUsesXcodePipeline(t *testing.T) {
 	if !buildCalled {
 		t.Fatal("expected xcode graph builder to be called")
 	}
-	if *got != "DOT" {
-		t.Fatalf("expected DOT output, got %q", *got)
+	if h.textOutput != "DOT" {
+		t.Fatalf("expected DOT output, got %q", h.textOutput)
 	}
 }

@@ -26,8 +26,8 @@ flowchart TD
 1. CLI parses and validates user flags.
 2. App resolves input source (`spm` or `xcode`).
 3. App builds a common graph model from the selected source pipeline.
-4. Renderers convert the graph into Mermaid and/or DOT text.
-5. Output layer writes text output; Graphviz layer optionally writes PNG.
+4. Renderers convert the graph into Mermaid or DOT text.
+5. Output layer writes text output; Graphviz layer generates PNG when format is `png`.
 6. Error layer maps failures to stable exit codes.
 
 ## Module Catalog
@@ -35,11 +35,12 @@ flowchart TD
 ### `cmd/swift-deps-diagram`
 - Entry point and CLI flag parsing.
 - Passes validated options into `internal/app.Run`.
+- Enforces single output selection via `--format mermaid|dot|png`.
 - Converts returned typed errors into process exit codes.
 
 ### `internal/app`
 - Orchestration layer.
-- Validates options, resolves mode, runs data extraction pipeline, renders output, writes files/stdout, and optionally triggers PNG generation.
+- Validates options, resolves mode, runs data extraction pipeline, renders output, writes files/stdout, and routes PNG generation through Graphviz when requested.
 - Central integration point for all internal modules.
 
 ### `internal/inputresolve`
@@ -89,7 +90,7 @@ flowchart TD
 - Creates destination directories and uses temp-file rename for safer writes.
 
 ### `internal/graphviz`
-- Optionally generates PNG from DOT source via `dot -Tpng`.
+- Generates PNG from DOT source via `dot -Tpng`.
 - Validates Graphviz availability and wraps render errors with typed kinds.
 
 ### `internal/errors`
