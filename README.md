@@ -1,7 +1,7 @@
 # swift-deps-diagram
 
 CLI tool to generate dependency diagrams from a Swift Package manifest (`Package.swift`) by using `swift package dump-package`.
-Also supports Xcode projects/workspaces that use Swift Package Manager dependencies.
+Also supports Xcode projects/workspaces and Bazel workspaces.
 
 ## Build
 
@@ -24,7 +24,8 @@ Flags:
 - `--path` package root (default `.`)
 - `--project` optional `.xcodeproj` path
 - `--workspace` optional `.xcworkspace` path
-- `--mode` `auto|spm|xcode` (default `auto`)
+- `--bazel-targets` optional Bazel query scope (default `//...`)
+- `--mode` `auto|spm|xcode|bazel` (default `auto`)
 - `--format` `mermaid|dot|png` (default `png`)
 - `--output` output file path (default: stdout for `mermaid`/`dot`, `deps.png` for `png`)
 - `--verbose` print generation details for file outputs
@@ -32,7 +33,8 @@ Flags:
 
 Input detection in `auto` mode:
 1. Prefer `.xcworkspace` / `.xcodeproj` if found under `--path`
-2. Fallback to `Package.swift`
+2. Fallback to Bazel workspace markers (`WORKSPACE`, `WORKSPACE.bazel`, `MODULE.bazel`)
+3. Fallback to `Package.swift`
 
 ## Examples
 
@@ -66,6 +68,29 @@ Use explicit Xcode project mode:
 
 ```bash
 ./swift-deps-diagram --mode xcode --project /path/to/App.xcodeproj --format dot --output deps.dot
+```
+
+## Using Bazel
+
+Bazel mode reads workspace dependencies using `bazel query` (falls back to `bazelisk` if `bazel` is not found).
+If your `bazel` command is Bazelisk, first run may require internet access to download Bazel.
+
+Use explicit Bazel mode for a workspace:
+
+```bash
+./swift-deps-diagram --mode bazel --path examples/projects/bazel-basic --format mermaid
+```
+
+Limit graph scope to specific Bazel targets:
+
+```bash
+./swift-deps-diagram --mode bazel --path examples/projects/bazel-basic --bazel-targets //app:cli --format dot --output deps.dot
+```
+
+Include test rules (`*_test`) in Bazel mode:
+
+```bash
+./swift-deps-diagram --mode bazel --path examples/projects/bazel-basic --include-tests --format mermaid
 ```
 
 ## Exit Codes

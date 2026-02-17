@@ -1,0 +1,22 @@
+load("//tools:swift_rules.bzl", "swift_binary", "swift_library", "swift_test")
+
+package(default_visibility = ["//visibility:public"])
+
+swift_library(
+    name = "core",
+)
+
+swift_library(
+    name = "feature",
+    deps = [":core"],
+)
+
+swift_binary(
+    name = "cli",
+    deps = [":feature"],
+)
+
+swift_test(
+    name = "cli_test",
+    deps = [":cli"],
+)

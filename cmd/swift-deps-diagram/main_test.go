@@ -24,6 +24,9 @@ func TestParseFlagsDefaults(t *testing.T) {
 	if opts.Mode != "auto" {
 		t.Fatalf("expected default mode auto, got %q", opts.Mode)
 	}
+	if opts.BazelTargets != "" {
+		t.Fatalf("expected default bazel-targets empty, got %q", opts.BazelTargets)
+	}
 	if opts.Format != "png" {
 		t.Fatalf("expected default format png, got %q", opts.Format)
 	}
@@ -121,6 +124,30 @@ func TestExecutePassesVerboseToApp(t *testing.T) {
 	}
 }
 
+func TestExecutePassesBazelTargetsToApp(t *testing.T) {
+	oldRun := runApp
+	defer func() { runApp = oldRun }()
+
+	var got app.Options
+	runApp = func(_ context.Context, opts app.Options, _ io.Writer) error {
+		got = opts
+		return nil
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := execute([]string{"--mode", "bazel", "--bazel-targets", "//app:cli", "--format", "dot"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	if got.Mode != "bazel" {
+		t.Fatalf("expected mode bazel, got %q", got.Mode)
+	}
+	if got.BazelTargets != "//app:cli" {
+		t.Fatalf("expected bazel-targets //app:cli, got %q", got.BazelTargets)
+	}
+}
+
 func TestExecuteWarnsWhenSPMModeIgnoresXcodeFlags(t *testing.T) {
 	oldRun := runApp
 	runApp = func(_ context.Context, _ app.Options, _ io.Writer) error {
@@ -146,7 +173,7 @@ func TestHelpTextIncludesFlags(t *testing.T) {
 		t.Fatal("expected help path to return error")
 	}
 	output := stderr.String()
-	for _, needle := range []string{"-path", "-project", "-workspace", "-mode", "-format", "-output", "-verbose", "-include-tests"} {
+	for _, needle := range []string{"-path", "-project", "-workspace", "-bazel-targets", "-mode", "-format", "-output", "-verbose", "-include-tests"} {
 		if !bytes.Contains([]byte(output), []byte(needle)) {
 			t.Fatalf("help output missing %s", needle)
 		}

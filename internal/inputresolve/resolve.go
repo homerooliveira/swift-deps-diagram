@@ -18,6 +18,7 @@ const (
 	ModeAuto  Mode = "auto"
 	ModeSPM   Mode = "spm"
 	ModeXcode Mode = "xcode"
+	ModeBazel Mode = "bazel"
 )
 
 type Request struct {
@@ -25,18 +26,21 @@ type Request struct {
 	Mode          Mode
 	ProjectPath   string
 	WorkspacePath string
+	BazelTargets  string
 }
 
 type Resolved struct {
-	Mode          Mode
-	PackagePath   string
-	ProjectPath   string
-	WorkspacePath string
+	Mode               Mode
+	PackagePath        string
+	ProjectPath        string
+	WorkspacePath      string
+	BazelWorkspacePath string
+	BazelTargets       string
 }
 
 func IsValidMode(mode Mode) bool {
 	switch mode {
-	case ModeAuto, ModeSPM, ModeXcode:
+	case ModeAuto, ModeSPM, ModeXcode, ModeBazel:
 		return true
 	default:
 		return false
@@ -51,7 +55,7 @@ func Resolve(req Request) (Resolved, error) {
 		req.Mode = ModeAuto
 	}
 	if !IsValidMode(req.Mode) {
-		return Resolved{}, apperrors.New(apperrors.KindInvalidArgs, "--mode must be one of: auto|spm|xcode", nil)
+		return Resolved{}, apperrors.New(apperrors.KindInvalidArgs, "--mode must be one of: auto|spm|xcode|bazel", nil)
 	}
 	if req.ProjectPath != "" && req.WorkspacePath != "" {
 		return Resolved{}, apperrors.New(apperrors.KindInvalidArgs, "--project and --workspace cannot be used together", nil)
@@ -75,6 +79,16 @@ func Resolve(req Request) (Resolved, error) {
 			return Resolved{}, err
 		}
 		return Resolved{Mode: ModeXcode, ProjectPath: projectPath, WorkspacePath: workspacePath}, nil
+	case ModeBazel:
+		workspacePath, err := resolveBazelWorkspacePath(absPath)
+		if err != nil {
+			return Resolved{}, err
+		}
+		return Resolved{
+			Mode:               ModeBazel,
+			BazelWorkspacePath: workspacePath,
+			BazelTargets:       normalizeBazelTargets(req.BazelTargets),
+		}, nil
 	case ModeAuto:
 		if req.ProjectPath != "" || req.WorkspacePath != "" {
 			projectPath, workspacePath, err := resolveXcodePath(absPath, req.ProjectPath, req.WorkspacePath)
@@ -88,6 +102,19 @@ func Resolve(req Request) (Resolved, error) {
 			return Resolved{Mode: ModeXcode, ProjectPath: projectPath, WorkspacePath: workspacePath}, nil
 		}
 
+		bazelWorkspace, bazelErr := resolveBazelWorkspacePath(absPath)
+		if bazelErr == nil {
+			return Resolved{
+				Mode:               ModeBazel,
+				BazelWorkspacePath: bazelWorkspace,
+				BazelTargets:       normalizeBazelTargets(req.BazelTargets),
+			}, nil
+		}
+		var bazelAppErr *apperrors.Error
+		if errors.As(bazelErr, &bazelAppErr) && bazelAppErr.Kind != apperrors.KindBazelWorkspaceNotFound {
+			return Resolved{}, bazelErr
+		}
+
 		pkgPath, pkgErr := resolvePackagePath(absPath)
 		if pkgErr == nil {
 			return Resolved{Mode: ModeSPM, PackagePath: pkgPath}, nil
@@ -98,12 +125,46 @@ func Resolve(req Request) (Resolved, error) {
 		}
 		return Resolved{}, apperrors.New(
 			apperrors.KindInputNotFound,
-			fmt.Sprintf("no .xcworkspace/.xcodeproj or Package.swift found under %s", absPath),
+			fmt.Sprintf("no .xcworkspace/.xcodeproj, bazel workspace markers, or Package.swift found under %s", absPath),
 			pkgErr,
 		)
 	default:
 		return Resolved{}, apperrors.New(apperrors.KindInvalidArgs, "unsupported mode", nil)
 	}
+}
+
+func normalizeBazelTargets(targets string) string {
+	targets = strings.TrimSpace(targets)
+	if targets == "" {
+		return "//..."
+	}
+	return targets
+}
+
+func resolveBazelWorkspacePath(path string) (string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", apperrors.New(apperrors.KindInputNotFound, "input path not found", err)
+	}
+
+	if !info.IsDir() {
+		base := filepath.Base(path)
+		switch base {
+		case "WORKSPACE", "WORKSPACE.bazel", "MODULE.bazel":
+			return filepath.Dir(path), nil
+		default:
+			return "", apperrors.New(apperrors.KindBazelWorkspaceNotFound, "bazel workspace markers not found", nil)
+		}
+	}
+
+	for _, marker := range []string{"WORKSPACE", "WORKSPACE.bazel", "MODULE.bazel"} {
+		candidate := filepath.Join(path, marker)
+		if _, err := os.Stat(candidate); err == nil {
+			return path, nil
+		}
+	}
+
+	return "", apperrors.New(apperrors.KindBazelWorkspaceNotFound, fmt.Sprintf("no WORKSPACE/WORKSPACE.bazel/MODULE.bazel found in %s", path), nil)
 }
 
 func resolvePackagePath(path string) (string, error) {

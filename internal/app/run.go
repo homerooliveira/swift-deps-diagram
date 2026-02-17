@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 
+	"swift-deps-diagram/internal/bazel"
+	"swift-deps-diagram/internal/bazelgraph"
 	apperrors "swift-deps-diagram/internal/errors"
 	"swift-deps-diagram/internal/graph"
 	"swift-deps-diagram/internal/graphviz"
@@ -24,6 +26,8 @@ var buildGraph = graph.Build
 var resolveInput = inputresolve.Resolve
 var loadXcodeProject = xcodeproj.Load
 var buildXcodeGraph = xcodegraph.Build
+var loadBazelWorkspace = bazel.LoadWorkspace
+var buildBazelGraph = bazelgraph.Build
 var renderMermaid = render.Mermaid
 var renderDot = render.Dot
 var writeOutput = output.Write
@@ -37,6 +41,7 @@ type Options struct {
 	PackagePath   string
 	ProjectPath   string
 	WorkspacePath string
+	BazelTargets  string
 	Mode          string
 	Format        string
 	OutputPath    string
@@ -52,7 +57,7 @@ func validateOptions(opts Options) error {
 		return apperrors.New(apperrors.KindInvalidArgs, "--mode cannot be empty", nil)
 	}
 	if !inputresolve.IsValidMode(inputresolve.Mode(opts.Mode)) {
-		return apperrors.New(apperrors.KindInvalidArgs, "--mode must be one of: auto|spm|xcode", nil)
+		return apperrors.New(apperrors.KindInvalidArgs, "--mode must be one of: auto|spm|xcode|bazel", nil)
 	}
 	if opts.ProjectPath != "" && opts.WorkspacePath != "" {
 		return apperrors.New(apperrors.KindInvalidArgs, "--project and --workspace cannot be used together", nil)
@@ -86,6 +91,7 @@ func Run(ctx context.Context, opts Options, stdout io.Writer) error {
 		Mode:          inputresolve.Mode(opts.Mode),
 		ProjectPath:   opts.ProjectPath,
 		WorkspacePath: opts.WorkspacePath,
+		BazelTargets:  opts.BazelTargets,
 	})
 	if err != nil {
 		return err
@@ -116,6 +122,15 @@ func Run(ctx context.Context, opts Options, stdout io.Writer) error {
 		g, err = buildXcodeGraph(project, opts.IncludeTests)
 		if err != nil {
 			return apperrors.New(apperrors.KindRuntime, "failed to build xcode dependency graph", err)
+		}
+	case inputresolve.ModeBazel:
+		workspace, err := loadBazelWorkspace(ctx, resolved.BazelWorkspacePath, resolved.BazelTargets)
+		if err != nil {
+			return err
+		}
+		g, err = buildBazelGraph(workspace, opts.IncludeTests)
+		if err != nil {
+			return apperrors.New(apperrors.KindRuntime, "failed to build bazel dependency graph", err)
 		}
 	default:
 		return apperrors.New(apperrors.KindInvalidArgs, "unsupported resolved input mode", nil)

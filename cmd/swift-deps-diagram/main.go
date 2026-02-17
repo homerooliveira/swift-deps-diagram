@@ -18,6 +18,7 @@ type cliOptions struct {
 	Path          string
 	ProjectPath   string
 	WorkspacePath string
+	BazelTargets  string
 	Mode          string
 	Format        string
 	Output        string
@@ -33,7 +34,8 @@ func parseFlags(args []string, stderr io.Writer) (cliOptions, error) {
 	fs.StringVar(&opts.Path, "path", ".", "Swift package root containing Package.swift")
 	fs.StringVar(&opts.ProjectPath, "project", "", "Optional .xcodeproj path")
 	fs.StringVar(&opts.WorkspacePath, "workspace", "", "Optional .xcworkspace path")
-	fs.StringVar(&opts.Mode, "mode", "auto", "Input mode: auto|spm|xcode")
+	fs.StringVar(&opts.BazelTargets, "bazel-targets", "", "Optional Bazel query scope expression (default //...)")
+	fs.StringVar(&opts.Mode, "mode", "auto", "Input mode: auto|spm|xcode|bazel")
 	fs.StringVar(&opts.Format, "format", "png", "Output format: mermaid|dot|png")
 	fs.StringVar(&opts.Output, "output", "", "Output file path (defaults to stdout)")
 	fs.BoolVar(&opts.Verbose, "verbose", false, "Print generation details for file outputs")
@@ -49,9 +51,9 @@ func parseFlags(args []string, stderr io.Writer) (cliOptions, error) {
 		return cliOptions{}, apperrors.New(apperrors.KindInvalidArgs, "--format must be one of: mermaid|dot|png", nil)
 	}
 	switch opts.Mode {
-	case "auto", "spm", "xcode":
+	case "auto", "spm", "xcode", "bazel":
 	default:
-		return cliOptions{}, apperrors.New(apperrors.KindInvalidArgs, "--mode must be one of: auto|spm|xcode", nil)
+		return cliOptions{}, apperrors.New(apperrors.KindInvalidArgs, "--mode must be one of: auto|spm|xcode|bazel", nil)
 	}
 	if opts.ProjectPath != "" && opts.WorkspacePath != "" {
 		return cliOptions{}, apperrors.New(apperrors.KindInvalidArgs, "--project and --workspace cannot be used together", nil)
@@ -78,6 +80,7 @@ func execute(args []string, stdout, stderr io.Writer) int {
 		PackagePath:   opts.Path,
 		ProjectPath:   opts.ProjectPath,
 		WorkspacePath: opts.WorkspacePath,
+		BazelTargets:  opts.BazelTargets,
 		Mode:          opts.Mode,
 		Format:        opts.Format,
 		OutputPath:    opts.Output,

@@ -56,3 +56,17 @@ go run ./cmd/swift-deps-diagram --mode xcode --workspace examples/projects/xcwor
 ```
 
 Note: Xcode mode requires `plutil` (macOS/Xcode command-line tooling).
+
+## `bazel-basic`
+
+Minimal Bazel workspace with a small Swift-like target graph:
+
+- `//app:cli` depends on `//app:feature`
+- `//app:feature` depends on `//app:core`
+- `//app:cli_test` depends on `//app:cli`
+
+Run:
+
+```bash
+go run ./cmd/swift-deps-diagram --path examples/projects/bazel-basic --mode bazel --format mermaid
+```

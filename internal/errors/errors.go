@@ -19,6 +19,10 @@ const (
 	KindXcodeProjectNotFound      Kind = "xcode_project_not_found"
 	KindXcodeParse                Kind = "xcode_parse_failed"
 	KindXcodeUnsupportedStructure Kind = "xcode_unsupported_structure"
+	KindBazelWorkspaceNotFound    Kind = "bazel_workspace_not_found"
+	KindBazelBinaryNotFound       Kind = "bazel_binary_not_found"
+	KindBazelQueryFailed          Kind = "bazel_query_failed"
+	KindBazelParseFailed          Kind = "bazel_parse_failed"
 	KindGraphvizNotFound          Kind = "graphviz_not_found"
 	KindGraphvizRender            Kind = "graphviz_render_failed"
 	KindOutputWrite               Kind = "output_write_failed"
@@ -73,7 +77,7 @@ func ExitCode(err error) int {
 		return 2
 	}
 	switch appErr.Kind {
-	case KindInvalidArgs, KindManifestNotFound, KindInputNotFound, KindAmbiguousInput, KindXcodeProjectNotFound:
+	case KindInvalidArgs, KindManifestNotFound, KindInputNotFound, KindAmbiguousInput, KindXcodeProjectNotFound, KindBazelWorkspaceNotFound:
 		return 1
 	default:
 		return 2

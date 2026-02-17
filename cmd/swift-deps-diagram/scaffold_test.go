@@ -27,6 +27,8 @@ func TestProjectStructure(t *testing.T) {
 		"internal/render",
 		"internal/output",
 		"internal/errors",
+		"internal/bazel",
+		"internal/bazelgraph",
 		"testdata/fixtures",
 	}
 

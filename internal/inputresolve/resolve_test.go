@@ -49,6 +49,52 @@ func TestResolveAutoPrefersXcodeOverSPM(t *testing.T) {
 	}
 }
 
+func TestResolveAutoPrefersXcodeOverBazelAndSPM(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "Package.swift"), []byte("// test"), 0o644); err != nil {
+		t.Fatalf("failed to create manifest: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "WORKSPACE.bazel"), []byte("workspace(name = \"x\")"), 0o644); err != nil {
+		t.Fatalf("failed to create workspace marker: %v", err)
+	}
+	projDir := filepath.Join(dir, "Sample.xcodeproj")
+	if err := os.MkdirAll(projDir, 0o755); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+
+	resolved, err := Resolve(Request{Path: dir, Mode: ModeAuto})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resolved.Mode != ModeXcode {
+		t.Fatalf("expected mode xcode, got %s", resolved.Mode)
+	}
+}
+
+func TestResolveAutoChoosesBazelWhenNoXcode(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "Package.swift"), []byte("// test"), 0o644); err != nil {
+		t.Fatalf("failed to create manifest: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "MODULE.bazel"), []byte("module(name = \"x\")"), 0o644); err != nil {
+		t.Fatalf("failed to create module marker: %v", err)
+	}
+
+	resolved, err := Resolve(Request{Path: dir, Mode: ModeAuto})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resolved.Mode != ModeBazel {
+		t.Fatalf("expected mode bazel, got %s", resolved.Mode)
+	}
+	if resolved.BazelWorkspacePath != dir {
+		t.Fatalf("unexpected workspace path %s", resolved.BazelWorkspacePath)
+	}
+	if resolved.BazelTargets != "//..." {
+		t.Fatalf("expected default bazel targets //..., got %s", resolved.BazelTargets)
+	}
+}
+
 func TestResolveModeValidation(t *testing.T) {
 	_, err := Resolve(Request{Path: t.TempDir(), Mode: Mode("bad")})
 	if err == nil {
@@ -56,6 +102,43 @@ func TestResolveModeValidation(t *testing.T) {
 	}
 	if !apperrors.IsKind(err, apperrors.KindInvalidArgs) {
 		t.Fatalf("expected invalid args kind, got %v", err)
+	}
+}
+
+func TestResolveBazelModeRequiresWorkspaceMarkers(t *testing.T) {
+	dir := t.TempDir()
+
+	_, err := Resolve(Request{Path: dir, Mode: ModeBazel})
+	if err == nil {
+		t.Fatal("expected bazel workspace not found error")
+	}
+	if !apperrors.IsKind(err, apperrors.KindBazelWorkspaceNotFound) {
+		t.Fatalf("expected bazel workspace not found kind, got %v", err)
+	}
+}
+
+func TestResolveBazelModeWithTargets(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "WORKSPACE"), []byte("workspace(name = \"x\")"), 0o644); err != nil {
+		t.Fatalf("failed to create workspace marker: %v", err)
+	}
+
+	resolved, err := Resolve(Request{
+		Path:         dir,
+		Mode:         ModeBazel,
+		BazelTargets: "//app:cli",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resolved.Mode != ModeBazel {
+		t.Fatalf("expected mode bazel, got %s", resolved.Mode)
+	}
+	if resolved.BazelWorkspacePath != dir {
+		t.Fatalf("expected bazel workspace path %s, got %s", dir, resolved.BazelWorkspacePath)
+	}
+	if resolved.BazelTargets != "//app:cli" {
+		t.Fatalf("expected bazel targets //app:cli, got %s", resolved.BazelTargets)
 	}
 }
 

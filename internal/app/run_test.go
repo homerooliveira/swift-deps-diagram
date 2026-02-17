@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"swift-deps-diagram/internal/bazel"
 	apperrors "swift-deps-diagram/internal/errors"
 	"swift-deps-diagram/internal/graph"
 	"swift-deps-diagram/internal/inputresolve"
@@ -44,6 +45,8 @@ func stubAppDeps(t *testing.T) *appHarness {
 	oldBuild := buildGraph
 	oldLoadXcode := loadXcodeProject
 	oldBuildXcode := buildXcodeGraph
+	oldLoadBazel := loadBazelWorkspace
+	oldBuildBazel := buildBazelGraph
 	oldMermaid := renderMermaid
 	oldDot := renderDot
 	oldWrite := writeOutput
@@ -56,6 +59,8 @@ func stubAppDeps(t *testing.T) *appHarness {
 		buildGraph = oldBuild
 		loadXcodeProject = oldLoadXcode
 		buildXcodeGraph = oldBuildXcode
+		loadBazelWorkspace = oldLoadBazel
+		buildBazelGraph = oldBuildBazel
 		renderMermaid = oldMermaid
 		renderDot = oldDot
 		writeOutput = oldWrite
@@ -73,6 +78,12 @@ func stubAppDeps(t *testing.T) *appHarness {
 	}
 	loadXcodeProject = func(context.Context, string) (xcodeproj.Project, error) { return xcodeproj.Project{}, nil }
 	buildXcodeGraph = func(xcodeproj.Project, bool) (graph.Graph, error) {
+		return graph.Graph{Nodes: map[string]graph.Node{}, Edges: []graph.Edge{}}, nil
+	}
+	loadBazelWorkspace = func(context.Context, string, string) (bazel.Workspace, error) {
+		return bazel.Workspace{}, nil
+	}
+	buildBazelGraph = func(bazel.Workspace, bool) (graph.Graph, error) {
 		return graph.Graph{Nodes: map[string]graph.Node{}, Edges: []graph.Edge{}}, nil
 	}
 	renderMermaid = func(graph.Graph) (string, error) { return "MERMAID", nil }
@@ -263,6 +274,49 @@ func TestRunXcodeModeUsesXcodePipeline(t *testing.T) {
 	}
 	if !buildCalled {
 		t.Fatal("expected xcode graph builder to be called")
+	}
+	if h.textOutput != "DOT" {
+		t.Fatalf("expected DOT output, got %q", h.textOutput)
+	}
+}
+
+func TestRunBazelModeUsesBazelPipeline(t *testing.T) {
+	dir := withManifestDir(t)
+	h := stubAppDeps(t)
+
+	resolveInput = func(inputresolve.Request) (inputresolve.Resolved, error) {
+		return inputresolve.Resolved{
+			Mode:               inputresolve.ModeBazel,
+			BazelWorkspacePath: "/tmp/workspace",
+			BazelTargets:       "//app:cli",
+		}, nil
+	}
+	loadCalled := false
+	buildCalled := false
+	loadBazelWorkspace = func(_ context.Context, path, targets string) (bazel.Workspace, error) {
+		loadCalled = true
+		if path != "/tmp/workspace" {
+			t.Fatalf("unexpected workspace path %q", path)
+		}
+		if targets != "//app:cli" {
+			t.Fatalf("unexpected targets %q", targets)
+		}
+		return bazel.Workspace{Targets: []bazel.Target{{Label: "//app:cli", Kind: "swift_binary"}}}, nil
+	}
+	buildBazelGraph = func(workspace bazel.Workspace, includeTests bool) (graph.Graph, error) {
+		buildCalled = true
+		return graph.Graph{Nodes: map[string]graph.Node{}, Edges: []graph.Edge{}}, nil
+	}
+
+	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "dot"}, &bytes.Buffer{})
+	if err != nil {
+		t.Fatalf("unexpected run error: %v", err)
+	}
+	if !loadCalled {
+		t.Fatal("expected bazel loader to be called")
+	}
+	if !buildCalled {
+		t.Fatal("expected bazel graph builder to be called")
 	}
 	if h.textOutput != "DOT" {
 		t.Fatalf("expected DOT output, got %q", h.textOutput)

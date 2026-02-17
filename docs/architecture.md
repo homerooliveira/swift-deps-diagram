@@ -13,6 +13,9 @@ flowchart TD
     MANIFEST --> GRAPH["internal/graph"]
     RESOLVE -->|Xcode mode| XCODEPROJ["internal/xcodeproj"]
     XCODEPROJ --> XCODEGRAPH["internal/xcodegraph"]
+    RESOLVE -->|Bazel mode| BAZEL["internal/bazel"]
+    BAZEL --> BAZELGRAPH["internal/bazelgraph"]
+    BAZELGRAPH --> GRAPH_OUT["internal/graph.Graph"]
     XCODEGRAPH --> GRAPH_OUT["internal/graph.Graph"]
     GRAPH --> GRAPH_OUT
     GRAPH_OUT --> RENDER["internal/render"]
@@ -24,7 +27,7 @@ flowchart TD
 ## Runtime Responsibilities
 
 1. CLI parses and validates user flags.
-2. App resolves input source (`spm` or `xcode`).
+2. App resolves input source (`spm`, `xcode`, or `bazel`).
 3. App builds a common graph model from the selected source pipeline.
 4. Renderers convert the graph into Mermaid or DOT text.
 5. Output layer writes text output; Graphviz layer generates PNG when format is `png`.
@@ -44,9 +47,9 @@ flowchart TD
 - Central integration point for all internal modules.
 
 ### `internal/inputresolve`
-- Detects and resolves input in `auto|spm|xcode` mode.
+- Detects and resolves input in `auto|spm|xcode|bazel` mode.
 - Rules:
-  - `auto`: prefer `.xcworkspace` / `.xcodeproj`, fallback to `Package.swift`.
+  - `auto`: prefer `.xcworkspace` / `.xcodeproj`, then Bazel workspace markers, fallback to `Package.swift`.
   - supports explicit `--project` and `--workspace`.
 - Returns a normalized `Resolved` input contract.
 
@@ -79,6 +82,16 @@ flowchart TD
 - Maps Xcode target and package-product relationships to graph nodes/edges.
 - Applies test-target filtering for Xcode mode.
 
+### `internal/bazel`
+- Executes Bazel workspace queries using `bazel query` (with `bazelisk` fallback).
+- Loads rule labels, rule kinds, and direct dependencies for a configured scope.
+- Produces normalized Bazel workspace model for graph adaptation.
+
+### `internal/bazelgraph`
+- Adapts Bazel workspace model into the canonical `internal/graph.Graph`.
+- Maps local labels to target nodes and external labels (`@repo//...`) to external-product nodes.
+- Applies Bazel test-rule filtering (`*_test`) when `--include-tests` is disabled.
+
 ### `internal/render`
 - Converts canonical graph into text formats:
   - Mermaid (`flowchart TD`)
@@ -110,4 +123,4 @@ flowchart TD
 - App entrypoint: `internal/app.Run(ctx, opts, stdout)`
 - Input resolver: `internal/inputresolve.Resolve(Request) -> Resolved`
 
-These contracts keep source-specific parsing (SwiftPM/Xcode) decoupled from rendering/output behavior.
+These contracts keep source-specific parsing (SwiftPM/Xcode/Bazel) decoupled from rendering/output behavior.
