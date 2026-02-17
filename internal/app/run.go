@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"swift-deps-diagram/internal/bazel"
 	"swift-deps-diagram/internal/bazelgraph"
@@ -81,6 +82,14 @@ func renderTextOutput(g graph.Graph, format string) (string, error) {
 	}
 }
 
+func absolutePath(path string) string {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		absPath = path
+	}
+	return absPath
+}
+
 // Run executes the full workflow from manifest dump to emitted diagram output.
 func Run(ctx context.Context, opts Options, stdout io.Writer) error {
 	if err := validateOptions(opts); err != nil {
@@ -148,9 +157,7 @@ func Run(ctx context.Context, opts Options, stdout io.Writer) error {
 		if err := writePNG(ctx, dotOut, pngOutputPath); err != nil {
 			return err
 		}
-		if opts.Verbose {
-			logInfof("generated png using dot format at %s", pngOutputPath)
-		}
+		logInfof("generated png using dot format at %s", absolutePath(pngOutputPath))
 		return nil
 	}
 

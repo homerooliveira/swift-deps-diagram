@@ -28,7 +28,7 @@ Flags:
 - `--mode` `auto|spm|xcode|bazel` (default `auto`)
 - `--format` `mermaid|dot|png` (default `png`)
 - `--output` output file path (default: stdout for `mermaid`/`dot`, `deps.png` for `png`)
-- `--verbose` print generation details for file outputs
+- `--verbose` print generation details for `mermaid`/`dot` file outputs
 - `--include-tests` include test targets
 
 Input detection in `auto` mode:
@@ -57,6 +57,8 @@ PNG using default output (`deps.png`):
 ```bash
 ./swift-deps-diagram --format png
 ```
+
+PNG mode always prints the absolute output path on stderr.
 
 Verbose message when writing a file:
 

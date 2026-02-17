@@ -224,28 +224,30 @@ func TestRunVerboseMessageRules(t *testing.T) {
 		}
 	})
 
-	t.Run("png_default_message", func(t *testing.T) {
-		h := stubAppDeps(t)
-		err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "png", Verbose: true}, &bytes.Buffer{})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if len(h.logMessages) != 1 || h.logMessages[0] != "generated png using dot format at deps.png" {
-			t.Fatalf("unexpected messages %#v", h.logMessages)
-		}
-	})
+		t.Run("png_default_message", func(t *testing.T) {
+			h := stubAppDeps(t)
+			err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "png", Verbose: true}, &bytes.Buffer{})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			expected := fmt.Sprintf("generated png using dot format at %s", absolutePath("deps.png"))
+			if len(h.logMessages) != 1 || h.logMessages[0] != expected {
+				t.Fatalf("unexpected messages %#v", h.logMessages)
+			}
+		})
 
-	t.Run("non_verbose_no_message", func(t *testing.T) {
-		h := stubAppDeps(t)
-		err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "png", OutputPath: "deps.png", Verbose: false}, &bytes.Buffer{})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if len(h.logMessages) != 0 {
-			t.Fatalf("expected no messages, got %#v", h.logMessages)
-		}
-	})
-}
+		t.Run("png_non_verbose_still_logs_output_path", func(t *testing.T) {
+			h := stubAppDeps(t)
+			err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "png", OutputPath: "deps.png", Verbose: false}, &bytes.Buffer{})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			expected := fmt.Sprintf("generated png using dot format at %s", absolutePath("deps.png"))
+			if len(h.logMessages) != 1 || h.logMessages[0] != expected {
+				t.Fatalf("unexpected messages %#v", h.logMessages)
+			}
+		})
+	}
 
 func TestRunXcodeModeUsesXcodePipeline(t *testing.T) {
 	dir := withManifestDir(t)
