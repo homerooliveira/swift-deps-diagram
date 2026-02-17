@@ -26,7 +26,7 @@ Flags:
 - `--workspace` optional `.xcworkspace` path
 - `--mode` `auto|spm|xcode` (default `auto`)
 - `--format` `mermaid|dot|png` (default `png`)
-- `--output` output file path (default stdout)
+- `--output` output file path (default: stdout for `mermaid`/`dot`, `deps.png` for `png`)
 - `--verbose` print generation details for file outputs
 - `--include-tests` include test targets
 
