@@ -49,6 +49,7 @@ func stubAppDeps(t *testing.T) *appHarness {
 	oldBuildBazel := buildBazelGraph
 	oldMermaid := renderMermaid
 	oldDot := renderDot
+	oldTerminal := renderTerminal
 	oldWrite := writeOutput
 	oldWritePNG := writePNG
 	oldLogInfof := logInfof
@@ -63,6 +64,7 @@ func stubAppDeps(t *testing.T) *appHarness {
 		buildBazelGraph = oldBuildBazel
 		renderMermaid = oldMermaid
 		renderDot = oldDot
+		renderTerminal = oldTerminal
 		writeOutput = oldWrite
 		writePNG = oldWritePNG
 		logInfof = oldLogInfof
@@ -88,6 +90,7 @@ func stubAppDeps(t *testing.T) *appHarness {
 	}
 	renderMermaid = func(graph.Graph) (string, error) { return "MERMAID", nil }
 	renderDot = func(graph.Graph) (string, error) { return "DOT", nil }
+	renderTerminal = func(graph.Graph) (string, error) { return "TERMINAL", nil }
 	writeOutput = func(content, _ string, _ io.Writer) error {
 		h.textOutput = content
 		return nil
@@ -130,6 +133,19 @@ func TestRunDotModeWritesText(t *testing.T) {
 	}
 	if h.textOutput != "DOT" {
 		t.Fatalf("expected DOT output, got %q", h.textOutput)
+	}
+}
+
+func TestRunTerminalModeWritesText(t *testing.T) {
+	dir := withManifestDir(t)
+	h := stubAppDeps(t)
+
+	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "terminal"}, &bytes.Buffer{})
+	if err != nil {
+		t.Fatalf("unexpected run error: %v", err)
+	}
+	if h.textOutput != "TERMINAL" {
+		t.Fatalf("expected TERMINAL output, got %q", h.textOutput)
 	}
 }
 
@@ -202,6 +218,17 @@ func TestRunVerboseMessageRules(t *testing.T) {
 		}
 	})
 
+	t.Run("terminal_stdout_no_message", func(t *testing.T) {
+		h := stubAppDeps(t)
+		err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "terminal", Verbose: true}, &bytes.Buffer{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(h.logMessages) != 0 {
+			t.Fatalf("expected no verbose messages, got %#v", h.logMessages)
+		}
+	})
+
 	t.Run("mermaid_file_message", func(t *testing.T) {
 		h := stubAppDeps(t)
 		err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "mermaid", OutputPath: "deps.mmd", Verbose: true}, &bytes.Buffer{})
@@ -224,30 +251,41 @@ func TestRunVerboseMessageRules(t *testing.T) {
 		}
 	})
 
-		t.Run("png_default_message", func(t *testing.T) {
-			h := stubAppDeps(t)
-			err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "png", Verbose: true}, &bytes.Buffer{})
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			expected := fmt.Sprintf("generated png using dot format at %s", absolutePath("deps.png"))
-			if len(h.logMessages) != 1 || h.logMessages[0] != expected {
-				t.Fatalf("unexpected messages %#v", h.logMessages)
-			}
-		})
+	t.Run("terminal_file_message", func(t *testing.T) {
+		h := stubAppDeps(t)
+		err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "terminal", OutputPath: "deps.tree", Verbose: true}, &bytes.Buffer{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(h.logMessages) != 1 || h.logMessages[0] != "generated terminal content at deps.tree" {
+			t.Fatalf("unexpected messages %#v", h.logMessages)
+		}
+	})
 
-		t.Run("png_non_verbose_still_logs_output_path", func(t *testing.T) {
-			h := stubAppDeps(t)
-			err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "png", OutputPath: "deps.png", Verbose: false}, &bytes.Buffer{})
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			expected := fmt.Sprintf("generated png using dot format at %s", absolutePath("deps.png"))
-			if len(h.logMessages) != 1 || h.logMessages[0] != expected {
-				t.Fatalf("unexpected messages %#v", h.logMessages)
-			}
-		})
-	}
+	t.Run("png_default_message", func(t *testing.T) {
+		h := stubAppDeps(t)
+		err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "png", Verbose: true}, &bytes.Buffer{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expected := fmt.Sprintf("generated png using dot format at %s", absolutePath("deps.png"))
+		if len(h.logMessages) != 1 || h.logMessages[0] != expected {
+			t.Fatalf("unexpected messages %#v", h.logMessages)
+		}
+	})
+
+	t.Run("png_non_verbose_still_logs_output_path", func(t *testing.T) {
+		h := stubAppDeps(t)
+		err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "png", OutputPath: "deps.png", Verbose: false}, &bytes.Buffer{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expected := fmt.Sprintf("generated png using dot format at %s", absolutePath("deps.png"))
+		if len(h.logMessages) != 1 || h.logMessages[0] != expected {
+			t.Fatalf("unexpected messages %#v", h.logMessages)
+		}
+	})
+}
 
 func TestRunXcodeModeUsesXcodePipeline(t *testing.T) {
 	dir := withManifestDir(t)

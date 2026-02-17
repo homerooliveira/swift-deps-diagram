@@ -36,7 +36,7 @@ func parseFlags(args []string, stderr io.Writer) (cliOptions, error) {
 	fs.StringVar(&opts.WorkspacePath, "workspace", "", "Optional .xcworkspace path")
 	fs.StringVar(&opts.BazelTargets, "bazel-targets", "", "Optional Bazel query scope expression (default //...)")
 	fs.StringVar(&opts.Mode, "mode", "auto", "Input mode: auto|spm|xcode|bazel")
-	fs.StringVar(&opts.Format, "format", "png", "Output format: mermaid|dot|png")
+	fs.StringVar(&opts.Format, "format", "png", "Output format: mermaid|dot|png|terminal")
 	fs.StringVar(&opts.Output, "output", "", "Output file path (defaults to stdout)")
 	fs.BoolVar(&opts.Verbose, "verbose", false, "Print generation details for file outputs")
 	fs.BoolVar(&opts.IncludeTests, "include-tests", false, "Include test targets in the graph")
@@ -46,9 +46,9 @@ func parseFlags(args []string, stderr io.Writer) (cliOptions, error) {
 	}
 
 	switch opts.Format {
-	case "mermaid", "dot", "png":
+	case "mermaid", "dot", "png", "terminal":
 	default:
-		return cliOptions{}, apperrors.New(apperrors.KindInvalidArgs, "--format must be one of: mermaid|dot|png", nil)
+		return cliOptions{}, apperrors.New(apperrors.KindInvalidArgs, "--format must be one of: mermaid|dot|png|terminal", nil)
 	}
 	switch opts.Mode {
 	case "auto", "spm", "xcode", "bazel":

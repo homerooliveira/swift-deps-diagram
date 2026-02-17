@@ -31,6 +31,7 @@ var loadBazelWorkspace = bazel.LoadWorkspace
 var buildBazelGraph = bazelgraph.Build
 var renderMermaid = render.Mermaid
 var renderDot = render.Dot
+var renderTerminal = render.Terminal
 var writeOutput = output.Write
 var writePNG = graphviz.WritePNG
 var logInfof = func(format string, args ...interface{}) {
@@ -64,9 +65,9 @@ func validateOptions(opts Options) error {
 		return apperrors.New(apperrors.KindInvalidArgs, "--project and --workspace cannot be used together", nil)
 	}
 	switch opts.Format {
-	case "mermaid", "dot", "png":
+	case "mermaid", "dot", "png", "terminal":
 	default:
-		return apperrors.New(apperrors.KindInvalidArgs, "--format must be one of: mermaid|dot|png", nil)
+		return apperrors.New(apperrors.KindInvalidArgs, "--format must be one of: mermaid|dot|png|terminal", nil)
 	}
 	return nil
 }
@@ -77,6 +78,8 @@ func renderTextOutput(g graph.Graph, format string) (string, error) {
 		return renderMermaid(g)
 	case "dot":
 		return renderDot(g)
+	case "terminal":
+		return renderTerminal(g)
 	default:
 		return "", apperrors.New(apperrors.KindInvalidArgs, "unsupported format", nil)
 	}
@@ -175,6 +178,8 @@ func Run(ctx context.Context, opts Options, stdout io.Writer) error {
 			logInfof("generated mermaid content at %s", opts.OutputPath)
 		case "dot":
 			logInfof("generated dot content at %s", opts.OutputPath)
+		case "terminal":
+			logInfof("generated terminal content at %s", opts.OutputPath)
 		}
 	}
 

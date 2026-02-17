@@ -29,7 +29,7 @@ flowchart TD
 1. CLI parses and validates user flags.
 2. App resolves input source (`spm`, `xcode`, or `bazel`).
 3. App builds a common graph model from the selected source pipeline.
-4. Renderers convert the graph into Mermaid or DOT text.
+4. Renderers convert the graph into Mermaid, DOT, or terminal ASCII tree text.
 5. Output layer writes text output; Graphviz layer generates PNG when format is `png`.
 6. Error layer maps failures to stable exit codes.
 
@@ -38,7 +38,7 @@ flowchart TD
 ### `cmd/swift-deps-diagram`
 - Entry point and CLI flag parsing.
 - Passes validated options into `internal/app.Run`.
-- Enforces single output selection via `--format mermaid|dot|png`.
+- Enforces single output selection via `--format mermaid|dot|png|terminal`.
 - Converts returned typed errors into process exit codes.
 
 ### `internal/app`
@@ -96,6 +96,7 @@ flowchart TD
 - Converts canonical graph into text formats:
   - Mermaid (`flowchart TD`)
   - Graphviz DOT (`digraph`)
+  - terminal ASCII tree
 - Ensures stable deterministic output and safe label escaping.
 
 ### `internal/output`

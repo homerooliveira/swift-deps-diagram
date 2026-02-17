@@ -52,6 +52,17 @@ func TestParseFlagsInvalidFormat(t *testing.T) {
 	}
 }
 
+func TestParseFlagsAcceptsTerminalFormat(t *testing.T) {
+	var stderr bytes.Buffer
+	opts, err := parseFlags([]string{"--format", "terminal"}, &stderr)
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+	if opts.Format != "terminal" {
+		t.Fatalf("expected terminal format, got %q", opts.Format)
+	}
+}
+
 func TestParseFlagsInvalidMode(t *testing.T) {
 	var stderr bytes.Buffer
 	_, err := parseFlags([]string{"--mode", "bad"}, &stderr)

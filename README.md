@@ -26,9 +26,9 @@ Flags:
 - `--workspace` optional `.xcworkspace` path
 - `--bazel-targets` optional Bazel query scope (default `//...`)
 - `--mode` `auto|spm|xcode|bazel` (default `auto`)
-- `--format` `mermaid|dot|png` (default `png`)
-- `--output` output file path (default: stdout for `mermaid`/`dot`, `deps.png` for `png`)
-- `--verbose` print generation details for `mermaid`/`dot` file outputs
+- `--format` `mermaid|dot|png|terminal` (default `png`)
+- `--output` output file path (default: stdout for `mermaid`/`dot`/`terminal`, `deps.png` for `png`)
+- `--verbose` print generation details for `mermaid`/`dot`/`terminal` file outputs
 - `--include-tests` include test targets
 
 Input detection in `auto` mode:
@@ -50,6 +50,12 @@ DOT only to file:
 
 ```bash
 ./swift-deps-diagram --format dot --output deps.dot
+```
+
+ASCII tree to stdout:
+
+```bash
+./swift-deps-diagram --format terminal
 ```
 
 PNG using default output (`deps.png`):
