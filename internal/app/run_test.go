@@ -11,7 +11,9 @@ import (
 
 	apperrors "swift-deps-diagram/internal/errors"
 	"swift-deps-diagram/internal/graph"
+	"swift-deps-diagram/internal/inputresolve"
 	"swift-deps-diagram/internal/manifest"
+	"swift-deps-diagram/internal/xcodeproj"
 )
 
 func withManifestDir(t *testing.T) string {
@@ -26,26 +28,39 @@ func withManifestDir(t *testing.T) string {
 
 func stubAppDeps(t *testing.T) *string {
 	t.Helper()
+	oldResolve := resolveInput
 	oldDump := dumpPackage
 	oldDecode := decodeManifest
 	oldBuild := buildGraph
+	oldLoadXcode := loadXcodeProject
+	oldBuildXcode := buildXcodeGraph
 	oldMermaid := renderMermaid
 	oldDot := renderDot
 	oldWrite := writeOutput
 	oldWritePNG := writePNG
 	t.Cleanup(func() {
+		resolveInput = oldResolve
 		dumpPackage = oldDump
 		decodeManifest = oldDecode
 		buildGraph = oldBuild
+		loadXcodeProject = oldLoadXcode
+		buildXcodeGraph = oldBuildXcode
 		renderMermaid = oldMermaid
 		renderDot = oldDot
 		writeOutput = oldWrite
 		writePNG = oldWritePNG
 	})
 
+	resolveInput = func(req inputresolve.Request) (inputresolve.Resolved, error) {
+		return inputresolve.Resolved{Mode: inputresolve.ModeSPM, PackagePath: req.Path}, nil
+	}
 	dumpPackage = func(context.Context, string) ([]byte, error) { return []byte(`{"name":"X"}`), nil }
 	decodeManifest = func([]byte) (manifest.Package, error) { return manifest.Package{}, nil }
 	buildGraph = func(manifest.Package, bool) (graph.Graph, error) {
+		return graph.Graph{Nodes: map[string]graph.Node{}, Edges: []graph.Edge{}}, nil
+	}
+	loadXcodeProject = func(context.Context, string) (xcodeproj.Project, error) { return xcodeproj.Project{}, nil }
+	buildXcodeGraph = func(xcodeproj.Project, bool) (graph.Graph, error) {
 		return graph.Graph{Nodes: map[string]graph.Node{}, Edges: []graph.Edge{}}, nil
 	}
 	renderMermaid = func(graph.Graph) (string, error) { return "MERMAID", nil }
@@ -64,7 +79,7 @@ func TestRunMermaidMode(t *testing.T) {
 	dir := withManifestDir(t)
 	got := stubAppDeps(t)
 
-	err := Run(context.Background(), Options{PackagePath: dir, Format: "mermaid"}, &bytes.Buffer{})
+	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "mermaid"}, &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("unexpected run error: %v", err)
 	}
@@ -77,7 +92,7 @@ func TestRunDotMode(t *testing.T) {
 	dir := withManifestDir(t)
 	got := stubAppDeps(t)
 
-	err := Run(context.Background(), Options{PackagePath: dir, Format: "dot"}, &bytes.Buffer{})
+	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "dot"}, &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("unexpected run error: %v", err)
 	}
@@ -90,7 +105,7 @@ func TestRunBothModeSeparator(t *testing.T) {
 	dir := withManifestDir(t)
 	got := stubAppDeps(t)
 
-	err := Run(context.Background(), Options{PackagePath: dir, Format: "both"}, &bytes.Buffer{})
+	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "both"}, &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("unexpected run error: %v", err)
 	}
@@ -100,7 +115,7 @@ func TestRunBothModeSeparator(t *testing.T) {
 }
 
 func TestRunInvalidArgs(t *testing.T) {
-	err := Run(context.Background(), Options{PackagePath: ".", Format: "bad"}, &bytes.Buffer{})
+	err := Run(context.Background(), Options{PackagePath: ".", Mode: "auto", Format: "bad"}, &bytes.Buffer{})
 	if err == nil {
 		t.Fatal("expected invalid args error")
 	}
@@ -116,7 +131,7 @@ func TestRunDumpFailure(t *testing.T) {
 		return nil, apperrors.New(apperrors.KindDumpPackage, "dump failed", errors.New("boom"))
 	}
 
-	err := Run(context.Background(), Options{PackagePath: dir, Format: "dot"}, &bytes.Buffer{})
+	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "dot"}, &bytes.Buffer{})
 	if err == nil {
 		t.Fatal("expected dump error")
 	}
@@ -139,7 +154,7 @@ func TestRunPNGOutputRequested(t *testing.T) {
 		return nil
 	}
 
-	err := Run(context.Background(), Options{PackagePath: dir, Format: "mermaid", PNGOutput: "out/diagram.png"}, &bytes.Buffer{})
+	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "mermaid", PNGOutput: "out/diagram.png"}, &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("unexpected run error: %v", err)
 	}
@@ -151,5 +166,38 @@ func TestRunPNGOutputRequested(t *testing.T) {
 	}
 	if gotDot != "DOT" {
 		t.Fatalf("expected DOT source passed to png generator, got %q", gotDot)
+	}
+}
+
+func TestRunXcodeModeUsesXcodePipeline(t *testing.T) {
+	dir := withManifestDir(t)
+	got := stubAppDeps(t)
+
+	resolveInput = func(inputresolve.Request) (inputresolve.Resolved, error) {
+		return inputresolve.Resolved{Mode: inputresolve.ModeXcode, ProjectPath: "/tmp/App.xcodeproj"}, nil
+	}
+	loadCalled := false
+	buildCalled := false
+	loadXcodeProject = func(context.Context, string) (xcodeproj.Project, error) {
+		loadCalled = true
+		return xcodeproj.Project{Targets: []xcodeproj.Target{{ID: "A", Name: "App"}}}, nil
+	}
+	buildXcodeGraph = func(xcodeproj.Project, bool) (graph.Graph, error) {
+		buildCalled = true
+		return graph.Graph{Nodes: map[string]graph.Node{}, Edges: []graph.Edge{}}, nil
+	}
+
+	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "dot"}, &bytes.Buffer{})
+	if err != nil {
+		t.Fatalf("unexpected run error: %v", err)
+	}
+	if !loadCalled {
+		t.Fatal("expected xcode loader to be called")
+	}
+	if !buildCalled {
+		t.Fatal("expected xcode graph builder to be called")
+	}
+	if *got != "DOT" {
+		t.Fatalf("expected DOT output, got %q", *got)
 	}
 }

@@ -15,11 +15,14 @@ import (
 var runApp = app.Run
 
 type cliOptions struct {
-	Path         string
-	Format       string
-	Output       string
-	PNGOutput    string
-	IncludeTests bool
+	Path          string
+	ProjectPath   string
+	WorkspacePath string
+	Mode          string
+	Format        string
+	Output        string
+	PNGOutput     string
+	IncludeTests  bool
 }
 
 func parseFlags(args []string, stderr io.Writer) (cliOptions, error) {
@@ -28,6 +31,9 @@ func parseFlags(args []string, stderr io.Writer) (cliOptions, error) {
 
 	opts := cliOptions{}
 	fs.StringVar(&opts.Path, "path", ".", "Swift package root containing Package.swift")
+	fs.StringVar(&opts.ProjectPath, "project", "", "Optional .xcodeproj path")
+	fs.StringVar(&opts.WorkspacePath, "workspace", "", "Optional .xcworkspace path")
+	fs.StringVar(&opts.Mode, "mode", "auto", "Input mode: auto|spm|xcode")
 	fs.StringVar(&opts.Format, "format", "both", "Output format: mermaid|dot|both")
 	fs.StringVar(&opts.Output, "output", "", "Output file path (defaults to stdout)")
 	fs.StringVar(&opts.PNGOutput, "png-output", "", "Optional PNG output path rendered using Graphviz dot")
@@ -41,6 +47,14 @@ func parseFlags(args []string, stderr io.Writer) (cliOptions, error) {
 	case "mermaid", "dot", "both":
 	default:
 		return cliOptions{}, apperrors.New(apperrors.KindInvalidArgs, "--format must be one of: mermaid|dot|both", nil)
+	}
+	switch opts.Mode {
+	case "auto", "spm", "xcode":
+	default:
+		return cliOptions{}, apperrors.New(apperrors.KindInvalidArgs, "--mode must be one of: auto|spm|xcode", nil)
+	}
+	if opts.ProjectPath != "" && opts.WorkspacePath != "" {
+		return cliOptions{}, apperrors.New(apperrors.KindInvalidArgs, "--project and --workspace cannot be used together", nil)
 	}
 
 	if fs.NArg() > 0 {
@@ -58,11 +72,14 @@ func execute(args []string, stdout, stderr io.Writer) int {
 	}
 
 	runErr := runApp(context.Background(), app.Options{
-		PackagePath:  opts.Path,
-		Format:       opts.Format,
-		OutputPath:   opts.Output,
-		PNGOutput:    opts.PNGOutput,
-		IncludeTests: opts.IncludeTests,
+		PackagePath:   opts.Path,
+		ProjectPath:   opts.ProjectPath,
+		WorkspacePath: opts.WorkspacePath,
+		Mode:          opts.Mode,
+		Format:        opts.Format,
+		OutputPath:    opts.Output,
+		PNGOutput:     opts.PNGOutput,
+		IncludeTests:  opts.IncludeTests,
 	}, stdout)
 	if runErr != nil {
 		fmt.Fprintln(stderr, runErr.Error())

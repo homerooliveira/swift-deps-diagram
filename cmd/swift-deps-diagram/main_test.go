@@ -20,6 +20,9 @@ func TestParseFlagsDefaults(t *testing.T) {
 	if opts.Path != "." {
 		t.Fatalf("expected default path '.', got %q", opts.Path)
 	}
+	if opts.Mode != "auto" {
+		t.Fatalf("expected default mode auto, got %q", opts.Mode)
+	}
 	if opts.Format != "both" {
 		t.Fatalf("expected default format both, got %q", opts.Format)
 	}
@@ -39,6 +42,17 @@ func TestParseFlagsInvalidFormat(t *testing.T) {
 	_, err := parseFlags([]string{"--format", "bad"}, &stderr)
 	if err == nil {
 		t.Fatal("expected error for invalid format")
+	}
+	if !apperrors.IsKind(err, apperrors.KindInvalidArgs) {
+		t.Fatalf("expected invalid args kind, got %v", err)
+	}
+}
+
+func TestParseFlagsInvalidMode(t *testing.T) {
+	var stderr bytes.Buffer
+	_, err := parseFlags([]string{"--mode", "bad"}, &stderr)
+	if err == nil {
+		t.Fatal("expected error for invalid mode")
 	}
 	if !apperrors.IsKind(err, apperrors.KindInvalidArgs) {
 		t.Fatalf("expected invalid args kind, got %v", err)
@@ -90,6 +104,9 @@ func TestExecutePassesPNGOutputToApp(t *testing.T) {
 	if got.PNGOutput != "graph.png" {
 		t.Fatalf("expected png output graph.png, got %q", got.PNGOutput)
 	}
+	if got.Mode != "auto" {
+		t.Fatalf("expected default mode auto in app options, got %q", got.Mode)
+	}
 }
 
 func TestHelpTextIncludesFlags(t *testing.T) {
@@ -99,7 +116,7 @@ func TestHelpTextIncludesFlags(t *testing.T) {
 		t.Fatal("expected help path to return error")
 	}
 	output := stderr.String()
-	for _, needle := range []string{"-path", "-format", "-output", "-png-output", "-include-tests"} {
+	for _, needle := range []string{"-path", "-project", "-workspace", "-mode", "-format", "-output", "-png-output", "-include-tests"} {
 		if !bytes.Contains([]byte(output), []byte(needle)) {
 			t.Fatalf("help output missing %s", needle)
 		}

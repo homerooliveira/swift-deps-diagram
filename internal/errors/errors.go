@@ -9,15 +9,20 @@ import (
 type Kind string
 
 const (
-	KindInvalidArgs      Kind = "invalid_args"
-	KindManifestNotFound Kind = "manifest_not_found"
-	KindSwiftNotFound    Kind = "swift_not_found"
-	KindDumpPackage      Kind = "dump_package_failed"
-	KindManifestDecode   Kind = "manifest_decode_failed"
-	KindGraphvizNotFound Kind = "graphviz_not_found"
-	KindGraphvizRender   Kind = "graphviz_render_failed"
-	KindOutputWrite      Kind = "output_write_failed"
-	KindRuntime          Kind = "runtime_failed"
+	KindInvalidArgs               Kind = "invalid_args"
+	KindManifestNotFound          Kind = "manifest_not_found"
+	KindInputNotFound             Kind = "input_not_found"
+	KindAmbiguousInput            Kind = "ambiguous_input"
+	KindSwiftNotFound             Kind = "swift_not_found"
+	KindDumpPackage               Kind = "dump_package_failed"
+	KindManifestDecode            Kind = "manifest_decode_failed"
+	KindXcodeProjectNotFound      Kind = "xcode_project_not_found"
+	KindXcodeParse                Kind = "xcode_parse_failed"
+	KindXcodeUnsupportedStructure Kind = "xcode_unsupported_structure"
+	KindGraphvizNotFound          Kind = "graphviz_not_found"
+	KindGraphvizRender            Kind = "graphviz_render_failed"
+	KindOutputWrite               Kind = "output_write_failed"
+	KindRuntime                   Kind = "runtime_failed"
 )
 
 // Error wraps typed failures so callers can map to exit codes.
@@ -68,7 +73,7 @@ func ExitCode(err error) int {
 		return 2
 	}
 	switch appErr.Kind {
-	case KindInvalidArgs, KindManifestNotFound:
+	case KindInvalidArgs, KindManifestNotFound, KindInputNotFound, KindAmbiguousInput, KindXcodeProjectNotFound:
 		return 1
 	default:
 		return 2
