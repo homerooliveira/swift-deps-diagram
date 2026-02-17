@@ -1,6 +1,6 @@
 # Implementation Progress
 
-Use this file to track completion of the plan steps during execution.
+Use this file to track completion of major documentation and implementation milestones.
 
 Status legend:
 - `TODO`: not started
@@ -8,29 +8,23 @@ Status legend:
 - `DONE`: implemented and verified
 - `BLOCKED`: waiting on dependency/decision
 
-## Overall
+## Overall Status
 
-- Current step: `DONE`
+- Current status: `DONE`
 - Last updated: `2026-02-17`
 
-## Step Tracker
+## Milestones
 
-| Step | Title | Status | Owner | Notes |
-|---|---|---|---|---|
-| 01 | Project Scaffold | DONE | Codex | module initialized, directories created |
-| 02 | CLI Contract and Entrypoint | DONE | Codex | flags, validation, exit-code mapping |
-| 03 | SwiftPM Manifest Dump Integration | DONE | Codex | dump-package wrapper with timeout and typed errors |
-| 04 | Manifest JSON Models and Decoder | DONE | Codex | decoder with dependency variants |
-| 05 | Dependency Graph Domain Model | DONE | Codex | node/edge models and deterministic sorting |
-| 06 | Graph Builder Rules | DONE | Codex | target/product/byName rules, dedup, test filtering |
-| 07 | Mermaid Renderer | DONE | Codex | deterministic Mermaid renderer |
-| 08 | Graphviz DOT Renderer | DONE | Codex | deterministic DOT renderer with styles |
-| 09 | Output Writer and Exit Codes | DONE | Codex | stdout/file atomic writes and error-code tests |
-| 10 | Tests, Fixtures, and Acceptance | DONE | Codex | fixtures + unit/integration tests passing |
+| Milestone | Status | Owner | Notes |
+|---|---|---|---|
+| Go CLI foundation | DONE | Codex | CLI, graph model, renderers, output |
+| SwiftPM dependency graph support | DONE | Codex | `dump-package` integration and tests |
+| PNG generation support | DONE | Codex | Graphviz integration |
+| Xcode + SPM dependency graph support | DONE | Codex | auto detection, `.pbxproj` parsing |
 
 ## Update Rules
 
-1. Mark exactly one step as `IN_PROGRESS` at a time.
-2. Move a step to `DONE` only after its done criteria and unit tests pass.
+1. Mark only active work as `IN_PROGRESS`.
+2. Move a milestone to `DONE` only after verification is complete.
 3. Keep `Last updated` current when any status changes.
 4. Add blockers and decision notes in `Notes`.
