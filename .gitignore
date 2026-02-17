@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Go build/test artifacts
+bin/
+dist/
+*.test
+*.out
+coverage.out
+
+# Local Go cache (used in sandboxed runs)
+.gocache/
+
+# Project binary (root only)
+/swift-deps-diagram

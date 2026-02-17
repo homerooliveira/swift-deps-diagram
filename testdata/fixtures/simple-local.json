@@ -1,0 +1,17 @@
+{
+  "name": "Sample",
+  "targets": [
+    {
+      "name": "App",
+      "type": "regular",
+      "dependencies": [
+        {"target": ["Core"]}
+      ]
+    },
+    {
+      "name": "Core",
+      "type": "regular",
+      "dependencies": []
+    }
+  ]
+}

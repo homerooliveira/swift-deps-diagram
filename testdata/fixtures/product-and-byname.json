@@ -1,0 +1,26 @@
+{
+  "name": "Sample",
+  "targets": [
+    {
+      "name": "App",
+      "type": "regular",
+      "dependencies": [
+        {"product": ["Alamofire", "alamofire"]},
+        {"byName": ["Core"]},
+        {"byName": ["SomeExternal"]}
+      ]
+    },
+    {
+      "name": "Core",
+      "type": "regular",
+      "dependencies": []
+    },
+    {
+      "name": "AppTests",
+      "type": "test",
+      "dependencies": [
+        {"target": ["App"]}
+      ]
+    }
+  ]
+}
