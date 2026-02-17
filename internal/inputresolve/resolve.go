@@ -1,6 +1,7 @@
 package inputresolve
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -91,10 +92,14 @@ func Resolve(req Request) (Resolved, error) {
 		if pkgErr == nil {
 			return Resolved{Mode: ModeSPM, PackagePath: pkgPath}, nil
 		}
+		var appErr *apperrors.Error
+		if errors.As(pkgErr, &appErr) && appErr.Kind != apperrors.KindManifestNotFound {
+			return Resolved{}, pkgErr
+		}
 		return Resolved{}, apperrors.New(
 			apperrors.KindInputNotFound,
 			fmt.Sprintf("no .xcworkspace/.xcodeproj or Package.swift found under %s", absPath),
-			nil,
+			pkgErr,
 		)
 	default:
 		return Resolved{}, apperrors.New(apperrors.KindInvalidArgs, "unsupported mode", nil)

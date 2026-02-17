@@ -3,6 +3,7 @@ package inputresolve
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	apperrors "swift-deps-diagram/internal/errors"
@@ -99,6 +100,9 @@ func TestResolveAutoNoInputFound(t *testing.T) {
 	if !apperrors.IsKind(err, apperrors.KindInputNotFound) {
 		t.Fatalf("expected input not found kind, got %v", err)
 	}
+	if !strings.Contains(err.Error(), "Package.swift not found") {
+		t.Fatalf("expected manifest failure context in error, got %q", err.Error())
+	}
 }
 
 func TestResolveAutoWithExplicitMissingProjectReturnsXcodeError(t *testing.T) {
@@ -112,5 +116,27 @@ func TestResolveAutoWithExplicitMissingProjectReturnsXcodeError(t *testing.T) {
 	}
 	if !apperrors.IsKind(err, apperrors.KindXcodeProjectNotFound) {
 		t.Fatalf("expected xcode project not found kind, got %v", err)
+	}
+}
+
+func TestResolveSPMIgnoresXcodeFlags(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "Package.swift"), []byte("// test"), 0o644); err != nil {
+		t.Fatalf("failed to create manifest: %v", err)
+	}
+
+	resolved, err := Resolve(Request{
+		Path:        dir,
+		Mode:        ModeSPM,
+		ProjectPath: filepath.Join(dir, "App.xcodeproj"),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resolved.Mode != ModeSPM {
+		t.Fatalf("expected mode spm, got %s", resolved.Mode)
+	}
+	if resolved.PackagePath != dir {
+		t.Fatalf("unexpected package path %s", resolved.PackagePath)
 	}
 }

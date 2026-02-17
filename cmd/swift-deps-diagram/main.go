@@ -70,6 +70,9 @@ func execute(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err.Error())
 		return apperrors.ExitCode(err)
 	}
+	if opts.Mode == "spm" && (opts.ProjectPath != "" || opts.WorkspacePath != "") {
+		fmt.Fprintln(stderr, "warning: --project/--workspace are ignored when --mode=spm")
+	}
 
 	runErr := runApp(context.Background(), app.Options{
 		PackagePath:   opts.Path,

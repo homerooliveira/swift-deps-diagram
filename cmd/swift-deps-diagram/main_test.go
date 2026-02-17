@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strings"
 	"testing"
 
 	"swift-deps-diagram/internal/app"
@@ -117,6 +118,24 @@ func TestExecutePassesVerboseToApp(t *testing.T) {
 	}
 	if got.Format != "dot" {
 		t.Fatalf("expected format dot, got %q", got.Format)
+	}
+}
+
+func TestExecuteWarnsWhenSPMModeIgnoresXcodeFlags(t *testing.T) {
+	oldRun := runApp
+	runApp = func(_ context.Context, _ app.Options, _ io.Writer) error {
+		return nil
+	}
+	defer func() { runApp = oldRun }()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := execute([]string{"--mode", "spm", "--project", "App.xcodeproj"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	if !strings.Contains(stderr.String(), "warning: --project/--workspace are ignored when --mode=spm") {
+		t.Fatalf("expected warning message, got %q", stderr.String())
 	}
 }
 
