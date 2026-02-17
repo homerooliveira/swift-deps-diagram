@@ -1,0 +1,26 @@
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+		TARGET_APP = {
+			isa = PBXNativeTarget;
+			name = WorkspaceApp;
+			productType = "com.apple.product-type.application";
+			packageProductDependencies = (
+				PROD_SNAPSHOT
+			);
+		};
+		PKG_REMOTE = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-snapshot-testing.git";
+		};
+		PROD_SNAPSHOT = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SnapshotTesting;
+			package = PKG_REMOTE;
+		};
+	};
+	rootObject = TARGET_APP;
+}

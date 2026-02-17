@@ -36,6 +36,8 @@ Input detection in `auto` mode:
 
 ## Examples
 
+Sample input projects (SwiftPM and Xcode) are available in `examples/projects/`.
+
 Mermaid only to stdout:
 
 ```bash

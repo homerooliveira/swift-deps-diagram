@@ -1,0 +1,38 @@
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+		TARGET_APP = {
+			isa = PBXNativeTarget;
+			name = App;
+			productType = "com.apple.product-type.application";
+			dependencies = (
+				DEP_CORE
+			);
+			packageProductDependencies = (
+				PROD_ALAMOFIRE
+			);
+		};
+		TARGET_CORE = {
+			isa = PBXNativeTarget;
+			name = Core;
+			productType = "com.apple.product-type.framework";
+		};
+		DEP_CORE = {
+			isa = PBXTargetDependency;
+			target = TARGET_CORE;
+		};
+		PKG_REMOTE = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Alamofire/Alamofire.git";
+		};
+		PROD_ALAMOFIRE = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Alamofire;
+			package = PKG_REMOTE;
+		};
+	};
+	rootObject = TARGET_APP;
+}
