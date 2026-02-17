@@ -32,6 +32,7 @@ func stubAppDeps(t *testing.T) *string {
 	oldMermaid := renderMermaid
 	oldDot := renderDot
 	oldWrite := writeOutput
+	oldWritePNG := writePNG
 	t.Cleanup(func() {
 		dumpPackage = oldDump
 		decodeManifest = oldDecode
@@ -39,6 +40,7 @@ func stubAppDeps(t *testing.T) *string {
 		renderMermaid = oldMermaid
 		renderDot = oldDot
 		writeOutput = oldWrite
+		writePNG = oldWritePNG
 	})
 
 	dumpPackage = func(context.Context, string) ([]byte, error) { return []byte(`{"name":"X"}`), nil }
@@ -54,6 +56,7 @@ func stubAppDeps(t *testing.T) *string {
 		got = content
 		return nil
 	}
+	writePNG = func(context.Context, string, string) error { return nil }
 	return &got
 }
 
@@ -119,5 +122,34 @@ func TestRunDumpFailure(t *testing.T) {
 	}
 	if !apperrors.IsKind(err, apperrors.KindDumpPackage) {
 		t.Fatalf("expected dump package kind, got %v", err)
+	}
+}
+
+func TestRunPNGOutputRequested(t *testing.T) {
+	dir := withManifestDir(t)
+	stubAppDeps(t)
+
+	pngCalled := false
+	var gotPath string
+	var gotDot string
+	writePNG = func(_ context.Context, dotSource, outputPath string) error {
+		pngCalled = true
+		gotPath = outputPath
+		gotDot = dotSource
+		return nil
+	}
+
+	err := Run(context.Background(), Options{PackagePath: dir, Format: "mermaid", PNGOutput: "out/diagram.png"}, &bytes.Buffer{})
+	if err != nil {
+		t.Fatalf("unexpected run error: %v", err)
+	}
+	if !pngCalled {
+		t.Fatal("expected png generation to be called")
+	}
+	if gotPath != "out/diagram.png" {
+		t.Fatalf("unexpected png output path %q", gotPath)
+	}
+	if gotDot != "DOT" {
+		t.Fatalf("expected DOT source passed to png generator, got %q", gotDot)
 	}
 }

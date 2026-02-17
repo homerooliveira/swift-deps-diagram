@@ -14,6 +14,8 @@ const (
 	KindSwiftNotFound    Kind = "swift_not_found"
 	KindDumpPackage      Kind = "dump_package_failed"
 	KindManifestDecode   Kind = "manifest_decode_failed"
+	KindGraphvizNotFound Kind = "graphviz_not_found"
+	KindGraphvizRender   Kind = "graphviz_render_failed"
 	KindOutputWrite      Kind = "output_write_failed"
 	KindRuntime          Kind = "runtime_failed"
 )

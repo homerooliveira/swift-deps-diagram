@@ -10,6 +10,7 @@ import (
 
 	apperrors "swift-deps-diagram/internal/errors"
 	"swift-deps-diagram/internal/graph"
+	"swift-deps-diagram/internal/graphviz"
 	"swift-deps-diagram/internal/manifest"
 	"swift-deps-diagram/internal/output"
 	"swift-deps-diagram/internal/render"
@@ -22,12 +23,14 @@ var buildGraph = graph.Build
 var renderMermaid = render.Mermaid
 var renderDot = render.Dot
 var writeOutput = output.Write
+var writePNG = graphviz.WritePNG
 
 // Options configure one CLI execution.
 type Options struct {
 	PackagePath  string
 	Format       string
 	OutputPath   string
+	PNGOutput    string
 	IncludeTests bool
 }
 
@@ -106,6 +109,15 @@ func Run(ctx context.Context, opts Options, stdout io.Writer) error {
 
 	if err := writeOutput(rendered, opts.OutputPath, stdout); err != nil {
 		return err
+	}
+	if opts.PNGOutput != "" {
+		dotOut, err := renderDot(g)
+		if err != nil {
+			return err
+		}
+		if err := writePNG(ctx, dotOut, opts.PNGOutput); err != nil {
+			return err
+		}
 	}
 
 	return nil

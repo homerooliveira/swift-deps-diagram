@@ -14,13 +14,15 @@ go build ./cmd/swift-deps-diagram
 ./swift-deps-diagram \
   --path /path/to/swift/package \
   --format both \
-  --output deps.txt
+  --output deps.txt \
+  --png-output deps.png
 ```
 
 Flags:
 - `--path` package root (default `.`)
 - `--format` `mermaid|dot|both` (default `both`)
 - `--output` output file path (default stdout)
+- `--png-output` optional PNG output file generated with Graphviz `dot`
 - `--include-tests` include test targets
 
 ## Examples
@@ -41,6 +43,12 @@ Both formats to stdout:
 
 ```bash
 ./swift-deps-diagram --format both
+```
+
+Generate Mermaid to stdout and PNG image at the same time:
+
+```bash
+./swift-deps-diagram --path ../Bump --format mermaid --png-output bump-deps.png
 ```
 
 ## Exit Codes

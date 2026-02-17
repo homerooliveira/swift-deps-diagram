@@ -18,6 +18,7 @@ type cliOptions struct {
 	Path         string
 	Format       string
 	Output       string
+	PNGOutput    string
 	IncludeTests bool
 }
 
@@ -29,6 +30,7 @@ func parseFlags(args []string, stderr io.Writer) (cliOptions, error) {
 	fs.StringVar(&opts.Path, "path", ".", "Swift package root containing Package.swift")
 	fs.StringVar(&opts.Format, "format", "both", "Output format: mermaid|dot|both")
 	fs.StringVar(&opts.Output, "output", "", "Output file path (defaults to stdout)")
+	fs.StringVar(&opts.PNGOutput, "png-output", "", "Optional PNG output path rendered using Graphviz dot")
 	fs.BoolVar(&opts.IncludeTests, "include-tests", false, "Include test targets in the graph")
 
 	if err := fs.Parse(args); err != nil {
@@ -59,6 +61,7 @@ func execute(args []string, stdout, stderr io.Writer) int {
 		PackagePath:  opts.Path,
 		Format:       opts.Format,
 		OutputPath:   opts.Output,
+		PNGOutput:    opts.PNGOutput,
 		IncludeTests: opts.IncludeTests,
 	}, stdout)
 	if runErr != nil {
