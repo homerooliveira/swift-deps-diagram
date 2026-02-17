@@ -15,6 +15,9 @@ func TestDotIncludesGraphHeaderAndFooter(t *testing.T) {
 	if !strings.HasPrefix(out, "digraph dependencies {") {
 		t.Fatalf("expected digraph header, got %q", out)
 	}
+	if !strings.Contains(out, "rankdir=TB;") {
+		t.Fatalf("expected top-to-bottom orientation, got %q", out)
+	}
 	if !strings.HasSuffix(out, "}") {
 		t.Fatalf("expected closing brace, got %q", out)
 	}

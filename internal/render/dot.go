@@ -30,7 +30,7 @@ func dotStyle(kind graph.NodeKind) string {
 func Dot(g graph.Graph) (string, error) {
 	var b strings.Builder
 	b.WriteString("digraph dependencies {\n")
-	b.WriteString("  rankdir=LR;\n")
+	b.WriteString("  rankdir=TB;\n")
 
 	for _, id := range graph.SortedNodeIDs(g) {
 		node, ok := g.Nodes[id]
