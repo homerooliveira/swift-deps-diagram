@@ -41,6 +41,9 @@ func Write(content, outputPath string, stdout io.Writer) error {
 	if err := os.Rename(tmpName, outputPath); err != nil {
 		return apperrors.New(apperrors.KindOutputWrite, "failed moving output file into place", err)
 	}
+	if err := os.Chmod(outputPath, 0o644); err != nil {
+		return apperrors.New(apperrors.KindOutputWrite, "failed setting output file permissions", err)
+	}
 
 	return nil
 }
