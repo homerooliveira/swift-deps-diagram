@@ -49,7 +49,7 @@ flowchart TD
 ### `internal/inputresolve`
 - Detects and resolves input in `auto|spm|xcode|bazel` mode.
 - Rules:
-  - `auto`: prefer `.xcworkspace` / `.xcodeproj`, then Bazel workspace markers, fallback to `Package.swift`.
+  - `auto`: prefer `.xcworkspace` / `.xcodeproj` / Tuist `Project.swift`, then Bazel workspace markers, fallback to `Package.swift`.
   - supports explicit `--project` and `--workspace`.
 - Returns a normalized `Resolved` input contract.
 

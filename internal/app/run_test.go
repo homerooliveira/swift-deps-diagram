@@ -44,6 +44,7 @@ func stubAppDeps(t *testing.T) *appHarness {
 	oldDecode := decodeManifest
 	oldBuild := buildGraph
 	oldLoadXcode := loadXcodeProject
+	oldGenerateTuist := generateTuistProject
 	oldBuildXcode := buildXcodeGraph
 	oldLoadBazel := loadBazelWorkspace
 	oldBuildBazel := buildBazelGraph
@@ -59,6 +60,7 @@ func stubAppDeps(t *testing.T) *appHarness {
 		decodeManifest = oldDecode
 		buildGraph = oldBuild
 		loadXcodeProject = oldLoadXcode
+		generateTuistProject = oldGenerateTuist
 		buildXcodeGraph = oldBuildXcode
 		loadBazelWorkspace = oldLoadBazel
 		buildBazelGraph = oldBuildBazel
@@ -79,6 +81,7 @@ func stubAppDeps(t *testing.T) *appHarness {
 		return graph.Graph{Nodes: map[string]graph.Node{}, Edges: []graph.Edge{}}, nil
 	}
 	loadXcodeProject = func(context.Context, string) (xcodeproj.Project, error) { return xcodeproj.Project{}, nil }
+	generateTuistProject = func(context.Context, string) error { return nil }
 	buildXcodeGraph = func(xcodeproj.Project, bool) (graph.Graph, error) {
 		return graph.Graph{Nodes: map[string]graph.Node{}, Edges: []graph.Edge{}}, nil
 	}
@@ -314,6 +317,55 @@ func TestRunXcodeModeUsesXcodePipeline(t *testing.T) {
 	}
 	if !buildCalled {
 		t.Fatal("expected xcode graph builder to be called")
+	}
+	if h.textOutput != "DOT" {
+		t.Fatalf("expected DOT output, got %q", h.textOutput)
+	}
+}
+
+func TestRunXcodeModeGeneratesTuistProject(t *testing.T) {
+	dir := withManifestDir(t)
+	h := stubAppDeps(t)
+
+	resolveCalls := 0
+	resolveInput = func(req inputresolve.Request) (inputresolve.Resolved, error) {
+		resolveCalls++
+		if resolveCalls == 1 {
+			return inputresolve.Resolved{Mode: inputresolve.ModeXcode, TuistPath: "/tmp/tuist-app"}, nil
+		}
+		if req.Path != "/tmp/tuist-app" || req.Mode != inputresolve.ModeXcode {
+			t.Fatalf("unexpected second resolve request: %#v", req)
+		}
+		return inputresolve.Resolved{Mode: inputresolve.ModeXcode, ProjectPath: "/tmp/tuist-app/App.xcodeproj"}, nil
+	}
+
+	generated := false
+	generateTuistProject = func(_ context.Context, path string) error {
+		generated = true
+		if path != "/tmp/tuist-app" {
+			t.Fatalf("unexpected tuist path: %s", path)
+		}
+		return nil
+	}
+
+	loaded := false
+	loadXcodeProject = func(_ context.Context, projectPath string) (xcodeproj.Project, error) {
+		loaded = true
+		if projectPath != "/tmp/tuist-app/App.xcodeproj" {
+			t.Fatalf("unexpected project path: %s", projectPath)
+		}
+		return xcodeproj.Project{Targets: []xcodeproj.Target{{ID: "A", Name: "App"}}}, nil
+	}
+
+	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "dot"}, &bytes.Buffer{})
+	if err != nil {
+		t.Fatalf("unexpected run error: %v", err)
+	}
+	if !generated {
+		t.Fatal("expected tuist generation to run")
+	}
+	if !loaded {
+		t.Fatal("expected xcode loader to run")
 	}
 	if h.textOutput != "DOT" {
 		t.Fatalf("expected DOT output, got %q", h.textOutput)

@@ -1,7 +1,7 @@
 # swift-deps-diagram
 
 CLI tool to generate dependency diagrams from a Swift Package manifest (`Package.swift`) by using `swift package dump-package`.
-Also supports Xcode projects/workspaces and Bazel workspaces.
+Also supports Xcode projects/workspaces, Tuist projects (`Project.swift`), and Bazel workspaces.
 
 ## Build
 
@@ -32,7 +32,7 @@ Flags:
 - `--include-tests` include test targets
 
 Input detection in `auto` mode:
-1. Prefer `.xcworkspace` / `.xcodeproj` if found under `--path`
+1. Prefer `.xcworkspace` / `.xcodeproj` (or Tuist `Project.swift`) if found under `--path`
 2. Fallback to Bazel workspace markers (`WORKSPACE`, `WORKSPACE.bazel`, `MODULE.bazel`)
 3. Fallback to `Package.swift`
 
@@ -76,6 +76,9 @@ Use explicit Xcode project mode:
 
 ```bash
 ./swift-deps-diagram --mode xcode --project /path/to/App.xcodeproj --format dot --output deps.dot
+
+# Tuist projects are also supported (runs `tuist generate` automatically)
+./swift-deps-diagram --mode xcode --path /path/to/tuist/project --format dot --output deps.dot
 ```
 
 ## Using Bazel

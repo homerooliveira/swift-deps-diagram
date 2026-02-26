@@ -17,6 +17,7 @@ import (
 	"swift-deps-diagram/internal/output"
 	"swift-deps-diagram/internal/render"
 	"swift-deps-diagram/internal/swiftpm"
+	"swift-deps-diagram/internal/tuist"
 	"swift-deps-diagram/internal/xcodegraph"
 	"swift-deps-diagram/internal/xcodeproj"
 )
@@ -26,6 +27,7 @@ var decodeManifest = manifest.Decode
 var buildGraph = graph.Build
 var resolveInput = inputresolve.Resolve
 var loadXcodeProject = xcodeproj.Load
+var generateTuistProject = tuist.Generate
 var buildXcodeGraph = xcodegraph.Build
 var loadBazelWorkspace = bazel.LoadWorkspace
 var buildBazelGraph = bazelgraph.Build
@@ -127,6 +129,16 @@ func Run(ctx context.Context, opts Options, stdout io.Writer) error {
 			return apperrors.New(apperrors.KindRuntime, "failed to build dependency graph", err)
 		}
 	case inputresolve.ModeXcode:
+		if resolved.TuistPath != "" {
+			if err := generateTuistProject(ctx, resolved.TuistPath); err != nil {
+				return err
+			}
+			generated, err := resolveInput(inputresolve.Request{Path: resolved.TuistPath, Mode: inputresolve.ModeXcode})
+			if err != nil {
+				return err
+			}
+			resolved = generated
+		}
 		project, err := loadXcodeProject(ctx, resolved.ProjectPath)
 		if err != nil {
 			return err

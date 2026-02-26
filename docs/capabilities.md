@@ -8,7 +8,7 @@ This document defines the behavior of `swift-deps-diagram` as a language-agnosti
 
 Supported source ecosystems:
 - SwiftPM (`Package.swift` via `swift package dump-package`)
-- Xcode (`.xcodeproj` and `.xcworkspace`)
+- Xcode (`.xcodeproj` and `.xcworkspace`) plus Tuist (`Project.swift`, generated via `tuist generate`)
 - Bazel (`WORKSPACE`, `WORKSPACE.bazel`, or `MODULE.bazel`)
 
 Scope of this specification:
@@ -65,7 +65,7 @@ Validation order:
 | Requested mode | Resolver behavior |
 |---|---|
 | `spm` | Requires `Package.swift`; returns SPM resolution with package path |
-| `xcode` | Resolves project/workspace; returns Xcode resolution |
+| `xcode` | Resolves project/workspace, or Tuist `Project.swift` that can generate an Xcode project; returns Xcode resolution |
 | `bazel` | Requires Bazel workspace marker; returns Bazel workspace + normalized target scope |
 | `auto` | Applies precedence: Xcode, then Bazel, then SwiftPM |
 
@@ -81,6 +81,7 @@ Tie-breakers and details:
 - For directory scanning:
   - Choose first lexicographically sorted `.xcworkspace` if any.
   - Otherwise choose first lexicographically sorted `.xcodeproj` if any.
+  - Otherwise if `Project.swift` exists, treat input as Tuist and generate project before loading.
 - If Xcode does not resolve, check Bazel markers.
 - If Bazel does not resolve, check `Package.swift`.
 
@@ -110,7 +111,7 @@ Rules:
 
 ### 3.5 Errors for “nothing found”
 
-If `auto` cannot resolve Xcode, Bazel, or SwiftPM markers, resolver returns input-not-found with a combined message indicating all checked marker classes.
+If `auto` cannot resolve Xcode/Tuist, Bazel, or SwiftPM markers, resolver returns input-not-found with a combined message indicating all checked marker classes.
 
 ## 4. Canonical Data Model
 
