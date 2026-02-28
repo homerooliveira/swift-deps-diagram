@@ -372,6 +372,34 @@ func TestRunXcodeModeGeneratesTuistProject(t *testing.T) {
 	}
 }
 
+func TestRunXcodeModeTuistGenerationRequiresResolvedProjectPath(t *testing.T) {
+	dir := withManifestDir(t)
+	stubAppDeps(t)
+
+	resolveCalls := 0
+	resolveInput = func(req inputresolve.Request) (inputresolve.Resolved, error) {
+		resolveCalls++
+		if resolveCalls == 1 {
+			return inputresolve.Resolved{Mode: inputresolve.ModeXcode, TuistPath: "/tmp/tuist-app"}, nil
+		}
+		if req.Path != "/tmp/tuist-app" || req.Mode != inputresolve.ModeXcode {
+			t.Fatalf("unexpected second resolve request: %#v", req)
+		}
+		return inputresolve.Resolved{Mode: inputresolve.ModeXcode, TuistPath: "/tmp/tuist-app"}, nil
+	}
+
+	err := Run(context.Background(), Options{PackagePath: dir, Mode: "auto", Format: "dot"}, &bytes.Buffer{})
+	if err == nil {
+		t.Fatal("expected run error")
+	}
+	if !apperrors.IsKind(err, apperrors.KindRuntime) {
+		t.Fatalf("expected runtime error kind, got %v", err)
+	}
+	if err.Error() != "tuist generation completed but no xcode project was resolved at /tmp/tuist-app" {
+		t.Fatalf("unexpected error message: %v", err)
+	}
+}
+
 func TestRunBazelModeUsesBazelPipeline(t *testing.T) {
 	dir := withManifestDir(t)
 	h := stubAppDeps(t)

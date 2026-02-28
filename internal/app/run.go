@@ -137,6 +137,9 @@ func Run(ctx context.Context, opts Options, stdout io.Writer) error {
 			if err != nil {
 				return err
 			}
+			if generated.ProjectPath == "" {
+				return apperrors.New(apperrors.KindRuntime, fmt.Sprintf("tuist generation completed but no xcode project was resolved at %s", resolved.TuistPath), nil)
+			}
 			resolved = generated
 		}
 		project, err := loadXcodeProject(ctx, resolved.ProjectPath)
