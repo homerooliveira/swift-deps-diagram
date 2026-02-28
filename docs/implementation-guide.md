@@ -133,7 +133,7 @@ function Run(ctx, opts, stdout):
     dotText = renderDot(graph)
     outputPath = opts.outputPath if opts.outputPath != "" else "deps.png"
     writePng(ctx, dotText, outputPath)
-    logStderr("generated png using dot format at " + outputPath)
+    logStderr("generated png using dot format at " + absolute(outputPath))
     return
 
   if opts.format == "mermaid":

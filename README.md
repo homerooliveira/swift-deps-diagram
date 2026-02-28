@@ -113,5 +113,5 @@ Include test rules (`*_test`) in Bazel mode:
 ## Exit Codes
 
 - `0`: success
-- `1`: usage/input error (invalid args, missing `Package.swift`)
-- `2`: runtime/tooling error (`swift` not found, dump/decode/write failure)
+- `1`: usage/input error (invalid args, unresolved input markers such as missing `Package.swift` / Xcode project/workspace / Bazel workspace markers)
+- `2`: runtime/tooling/parse/render/output error (for example: missing `swift`/`plutil`/`tuist`/`dot` binaries, command failures, decode/parse failures, or write failures)
