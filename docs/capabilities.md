@@ -65,7 +65,7 @@ Validation order:
 | Requested mode | Resolver behavior |
 |---|---|
 | `spm` | Requires `Package.swift`; returns SPM resolution with package path |
-| `xcode` | Resolves project/workspace, or Tuist `Project.swift` that can generate an Xcode project; returns Xcode resolution |
+| `xcode` | Resolves project/workspace; if missing and no explicit Xcode flags were provided, falls back to Tuist `Project.swift` and returns Xcode resolution with `TuistPath` |
 | `bazel` | Requires Bazel workspace marker; returns Bazel workspace + normalized target scope |
 | `auto` | Applies precedence: Xcode, then Bazel, then SwiftPM |
 
@@ -81,7 +81,7 @@ Tie-breakers and details:
 - For directory scanning:
   - Choose first lexicographically sorted `.xcworkspace` if any.
   - Otherwise choose first lexicographically sorted `.xcodeproj` if any.
-  - Otherwise if `Project.swift` exists, treat input as Tuist and generate project before loading.
+  - Otherwise if `Project.swift` exists, return an Xcode resolution with `TuistPath` so the app can generate and re-resolve.
 - If Xcode does not resolve, check Bazel markers.
 - If Bazel does not resolve, check `Package.swift`.
 
@@ -195,6 +195,21 @@ Failure classes:
 - Bazel binary not found.
 - Query timeout/failure.
 - Rule-kind parse failure.
+
+### 5.4 Tuist adapter behavior
+
+Behavior:
+- Requires `tuist` available in `PATH`.
+- Triggered only when Xcode resolution returns a non-empty `TuistPath` (`Project.swift` detected).
+- Executes `tuist generate --no-open` in the resolved Tuist directory.
+- Uses a 2-minute timeout.
+- After successful generation, app re-runs Xcode resolution on the same path and requires a non-empty `ProjectPath` before loading via Xcode adapter.
+- `Project.swift` is never parsed directly; the generated `.xcodeproj` is the only source consumed by the Xcode adapter.
+
+Failure classes:
+- `tuist` binary not found.
+- Generate timeout/failure (including stderr details).
+- Runtime failure when generation succeeds but no `.xcodeproj` is resolved.
 
 ## 6. Graph Construction Semantics
 

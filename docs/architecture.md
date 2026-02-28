@@ -12,6 +12,9 @@ flowchart TD
     SWIFTPM --> MANIFEST["internal/manifest"]
     MANIFEST --> GRAPH["internal/graph"]
     RESOLVE -->|Xcode mode| XCODEPROJ["internal/xcodeproj"]
+    RESOLVE -->|Xcode mode with TuistPath| TUIST["internal/tuist"]
+    TUIST --> RERESOLVE["internal/inputresolve (xcode re-resolve)"]
+    RERESOLVE --> XCODEPROJ["internal/xcodeproj"]
     XCODEPROJ --> XCODEGRAPH["internal/xcodegraph"]
     RESOLVE -->|Bazel mode| BAZEL["internal/bazel"]
     BAZEL --> BAZELGRAPH["internal/bazelgraph"]
@@ -28,10 +31,11 @@ flowchart TD
 
 1. CLI parses and validates user flags.
 2. App resolves input source (`spm`, `xcode`, or `bazel`).
-3. App builds a common graph model from the selected source pipeline.
-4. Renderers convert the graph into Mermaid, DOT, or terminal ASCII tree text.
-5. Output layer writes text output; Graphviz layer generates PNG when format is `png`.
-6. Error layer maps failures to stable exit codes.
+3. For Tuist inputs, app runs `tuist generate --no-open`, re-resolves Xcode input, then loads the generated `.xcodeproj`.
+4. App builds a common graph model from the selected source pipeline.
+5. Renderers convert the graph into Mermaid, DOT, or terminal ASCII tree text.
+6. Output layer writes text output; Graphviz layer generates PNG when format is `png`.
+7. Error layer maps failures to stable exit codes.
 
 ## Module Catalog
 
@@ -52,6 +56,11 @@ flowchart TD
   - `auto`: prefer `.xcworkspace` / `.xcodeproj` / Tuist `Project.swift`, then Bazel workspace markers, fallback to `Package.swift`.
   - supports explicit `--project` and `--workspace`.
 - Returns a normalized `Resolved` input contract.
+
+### `internal/tuist`
+- Generates Xcode projects from Tuist manifests by running `tuist generate --no-open`.
+- Wraps tool discovery, timeout handling, and stderr-rich runtime failures.
+- Used by `internal/app` only when resolver returns a non-empty `TuistPath`.
 
 ### `internal/swiftpm`
 - Executes `swift package dump-package --package-path ...`.

@@ -13,6 +13,7 @@ Mirror the architecture as language-neutral components.
 | `resolver` | Resolve user input into a normalized execution plan |
 | `adapter_swiftpm` | Execute SwiftPM manifest extraction command with timeout |
 | `adapter_xcode` | Load and normalize Xcode project/workspace dependency data |
+| `adapter_tuist` | Generate Xcode project from `Project.swift` (`tuist generate --no-open`) |
 | `adapter_bazel` | Load and normalize Bazel dependency data via query commands |
 | `graph_core` | Canonical graph types, edge keying, sorting helpers |
 | `graph_from_spm` | Convert SwiftPM dependency model into canonical graph |
@@ -112,6 +113,12 @@ function Run(ctx, opts, stdout):
       graph = buildGraphFromSPM(manifest, opts.includeTests)
 
     case XCODE:
+      if resolved.tuistPath != "":
+        generateTuistProject(ctx, resolved.tuistPath)
+        generated = resolveInput({path: resolved.tuistPath, mode: "xcode"})
+        if generated.projectPath == "":
+          raise runtime_failed("tuist generation completed but no xcode project was resolved")
+        resolved = generated
       project = loadXcodeProject(ctx, resolved.projectPath)
       graph = buildGraphFromXcode(project, opts.includeTests)
 
@@ -160,8 +167,12 @@ function Resolve(request):
     return {mode:spm, packagePath:resolvePackagePath(path)}
 
   if mode == "xcode":
-    projectPath, workspacePath = resolveXcodePath(path, request.projectPath, request.workspacePath)
-    return {mode:xcode, projectPath, workspacePath}
+    if tryResolveXcode(path, request.projectPath, request.workspacePath) succeeds:
+      return xcode result
+    if request.projectPath or request.workspacePath:
+      rethrow xcode error
+    tuistPath = resolveTuistPath(path)  # detects Project.swift
+    return {mode:xcode, tuistPath}
 
   if mode == "bazel":
     workspacePath = resolveBazelWorkspacePath(path)
@@ -174,6 +185,9 @@ function Resolve(request):
 
   if tryResolveXcode(path) succeeds:
     return xcode result
+
+  if tryResolveTuist(path) succeeds:
+    return {mode:xcode, tuistPath}
 
   if tryResolveBazel(path) succeeds:
     return bazel result
