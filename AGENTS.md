@@ -4,7 +4,7 @@
 This repository is a Go CLI for generating Swift dependency diagrams.
 - `cmd/swift-deps-diagram/`: CLI entrypoint (`main.go`) and CLI-focused tests.
 - `internal/app/`: orchestration pipeline from input resolution to rendering/output.
-- `internal/*`: focused modules (`inputresolve`, `swiftpm`, `xcodeproj`, `graph`, `render`, `output`, `graphviz`, `errors`).
+- `internal/*`: focused modules (`app`, `inputresolve`, `swiftpm`, `manifest`, `xcodeproj`, `xcodegraph`, `tuist`, `bazel`, `bazelgraph`, `graph`, `render`, `output`, `graphviz`, `errors`).
 - `internal/testutil/`: shared test helpers.
 - `testdata/fixtures/`: JSON fixtures used by unit tests.
 - `docs/`: architecture and feature docs.

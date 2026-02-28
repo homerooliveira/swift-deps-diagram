@@ -31,6 +31,12 @@ Flags:
 - `--verbose` print generation details for `mermaid`/`dot`/`terminal` file outputs
 - `--include-tests` include test targets
 
+Tooling requirements by mode/format:
+- SwiftPM (`--mode spm` or `auto` fallback): `swift` in `PATH`
+- Xcode (`--mode xcode` or `auto` Xcode/Tuist path): `plutil` in `PATH`
+- Tuist (`Project.swift` inputs): `tuist` in `PATH`
+- PNG output (`--format png`): Graphviz `dot` in `PATH`
+
 Input detection in `auto` mode:
 1. Prefer `.xcworkspace` / `.xcodeproj` (or Tuist `Project.swift`) if found under `--path`
 2. Fallback to Bazel workspace markers (`WORKSPACE`, `WORKSPACE.bazel`, `MODULE.bazel`)
