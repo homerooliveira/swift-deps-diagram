@@ -10,9 +10,11 @@ import (
 	apperrors "swift-deps-diagram/internal/errors"
 )
 
-// Generate runs `tuist generate` in a directory containing Project.swift.
+var execCommandContext = exec.CommandContext
+
+// Generate runs `tuist generate --no-open` in a directory containing Project.swift.
 func Generate(ctx context.Context, path string) error {
-	cmd := exec.CommandContext(ctx, "tuist", "generate")
+	cmd := execCommandContext(ctx, "tuist", "generate", "--no-open")
 	cmd.Dir = path
 	output, err := cmd.CombinedOutput()
 	if err == nil {
