@@ -4,7 +4,7 @@
 This repository is a Go CLI for generating Swift dependency diagrams.
 - `cmd/swift-deps-diagram/`: CLI entrypoint (`main.go`) and CLI-focused tests.
 - `internal/app/`: orchestration pipeline from input resolution to rendering/output.
-- `internal/*`: focused modules (`inputresolve`, `swiftpm`, `xcodeproj`, `graph`, `render`, `output`, `graphviz`, `errors`).
+- `internal/*`: focused modules (`app`, `inputresolve`, `swiftpm`, `manifest`, `xcodeproj`, `xcodegraph`, `tuist`, `bazel`, `bazelgraph`, `graph`, `render`, `output`, `graphviz`, `errors`).
 - `internal/testutil/`: shared test helpers.
 - `testdata/fixtures/`: JSON fixtures used by unit tests.
 - `docs/`: architecture and feature docs.
@@ -18,7 +18,7 @@ Keep new code in `internal/<domain>` with matching tests, and keep `cmd/` thin.
 - `go test ./internal/render -run TestDot`: run a focused test subset.
 - `gofmt -w .`: format all Go files before committing.
 
-If you use PNG output (`--format png`), ensure Graphviz `dot` is installed. SwiftPM/Xcode flows also depend on Apple tooling (`swift`, `plutil`).
+If you use PNG output (`--format png`), ensure Graphviz `dot` is installed. SwiftPM/Xcode flows depend on tooling such as `swift` and `plutil`, and Tuist flows require `tuist`.
 
 ## Coding Style & Naming Conventions
 Follow standard Go conventions:

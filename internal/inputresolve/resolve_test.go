@@ -95,6 +95,46 @@ func TestResolveAutoChoosesBazelWhenNoXcode(t *testing.T) {
 	}
 }
 
+func TestResolveAutoChoosesTuistWhenNoXcodeProj(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "Project.swift"), []byte("import ProjectDescription"), 0o644); err != nil {
+		t.Fatalf("failed to create tuist manifest: %v", err)
+	}
+
+	resolved, err := Resolve(Request{Path: dir, Mode: ModeAuto})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resolved.Mode != ModeXcode {
+		t.Fatalf("expected mode xcode, got %s", resolved.Mode)
+	}
+	if resolved.TuistPath != dir {
+		t.Fatalf("expected tuist path %s, got %s", dir, resolved.TuistPath)
+	}
+	if resolved.ProjectPath != "" {
+		t.Fatalf("expected empty xcodeproj path before generation, got %s", resolved.ProjectPath)
+	}
+}
+
+func TestResolveXcodeModeSupportsTuistProject(t *testing.T) {
+	dir := t.TempDir()
+	manifest := filepath.Join(dir, "Project.swift")
+	if err := os.WriteFile(manifest, []byte("import ProjectDescription"), 0o644); err != nil {
+		t.Fatalf("failed to create tuist manifest: %v", err)
+	}
+
+	resolved, err := Resolve(Request{Path: manifest, Mode: ModeXcode})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resolved.Mode != ModeXcode {
+		t.Fatalf("expected mode xcode, got %s", resolved.Mode)
+	}
+	if resolved.TuistPath != dir {
+		t.Fatalf("expected tuist path %s, got %s", dir, resolved.TuistPath)
+	}
+}
+
 func TestResolveModeValidation(t *testing.T) {
 	_, err := Resolve(Request{Path: t.TempDir(), Mode: Mode("bad")})
 	if err == nil {
@@ -185,6 +225,9 @@ func TestResolveAutoNoInputFound(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "no supported project markers found under") {
 		t.Fatalf("expected combined auto mode message, got %q", err.Error())
+	}
+	if !strings.Contains(err.Error(), "Project.swift") {
+		t.Fatalf("expected Project.swift in combined auto mode message, got %q", err.Error())
 	}
 	if strings.Contains(err.Error(), "Try --mode spm|xcode|bazel") {
 		t.Fatalf("did not expect mode hint in error, got %q", err.Error())

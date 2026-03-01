@@ -34,6 +34,7 @@ type Resolved struct {
 	PackagePath        string
 	ProjectPath        string
 	WorkspacePath      string
+	TuistPath          string
 	BazelWorkspacePath string
 	BazelTargets       string
 }
@@ -75,10 +76,17 @@ func Resolve(req Request) (Resolved, error) {
 		return Resolved{Mode: ModeSPM, PackagePath: pkgPath}, nil
 	case ModeXcode:
 		projectPath, workspacePath, err := resolveXcodePath(absPath, req.ProjectPath, req.WorkspacePath)
-		if err != nil {
+		if err == nil {
+			return Resolved{Mode: ModeXcode, ProjectPath: projectPath, WorkspacePath: workspacePath}, nil
+		}
+		if req.ProjectPath != "" || req.WorkspacePath != "" {
 			return Resolved{}, err
 		}
-		return Resolved{Mode: ModeXcode, ProjectPath: projectPath, WorkspacePath: workspacePath}, nil
+		tuistPath, tuistErr := resolveTuistPath(absPath)
+		if tuistErr != nil {
+			return Resolved{}, err
+		}
+		return Resolved{Mode: ModeXcode, TuistPath: tuistPath}, nil
 	case ModeBazel:
 		workspacePath, err := resolveBazelWorkspacePath(absPath)
 		if err != nil {
@@ -100,6 +108,11 @@ func Resolve(req Request) (Resolved, error) {
 		projectPath, workspacePath, err := resolveXcodePath(absPath, req.ProjectPath, req.WorkspacePath)
 		if err == nil {
 			return Resolved{Mode: ModeXcode, ProjectPath: projectPath, WorkspacePath: workspacePath}, nil
+		}
+
+		tuistPath, tuistErr := resolveTuistPath(absPath)
+		if tuistErr == nil {
+			return Resolved{Mode: ModeXcode, TuistPath: tuistPath}, nil
 		}
 
 		bazelWorkspace, bazelErr := resolveBazelWorkspacePath(absPath)
@@ -126,7 +139,7 @@ func Resolve(req Request) (Resolved, error) {
 		return Resolved{}, apperrors.New(
 			apperrors.KindInputNotFound,
 			fmt.Sprintf(
-				"no supported project markers found under %s (checked .xcworkspace/.xcodeproj, WORKSPACE/WORKSPACE.bazel/MODULE.bazel, and Package.swift)",
+				"no supported project markers found under %s (checked .xcworkspace/.xcodeproj/Project.swift, WORKSPACE/WORKSPACE.bazel/MODULE.bazel, and Package.swift)",
 				absPath,
 			),
 			nil,
@@ -186,6 +199,26 @@ func resolvePackagePath(path string) (string, error) {
 	manifestPath := filepath.Join(path, "Package.swift")
 	if _, err := os.Stat(manifestPath); err != nil {
 		return "", apperrors.New(apperrors.KindManifestNotFound, fmt.Sprintf("Package.swift not found at %s", manifestPath), err)
+	}
+	return path, nil
+}
+
+func resolveTuistPath(path string) (string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", apperrors.New(apperrors.KindInputNotFound, "input path not found", err)
+	}
+
+	if !info.IsDir() {
+		if filepath.Base(path) == "Project.swift" {
+			return filepath.Dir(path), nil
+		}
+		return "", apperrors.New(apperrors.KindXcodeProjectNotFound, "Project.swift not found", nil)
+	}
+
+	tuistProjectPath := filepath.Join(path, "Project.swift")
+	if _, err := os.Stat(tuistProjectPath); err != nil {
+		return "", apperrors.New(apperrors.KindXcodeProjectNotFound, fmt.Sprintf("Project.swift not found at %s", tuistProjectPath), err)
 	}
 	return path, nil
 }

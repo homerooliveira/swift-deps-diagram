@@ -1,7 +1,7 @@
 # swift-deps-diagram
 
 CLI tool to generate dependency diagrams from a Swift Package manifest (`Package.swift`) by using `swift package dump-package`.
-Also supports Xcode projects/workspaces and Bazel workspaces.
+Also supports Xcode projects/workspaces, Tuist projects (`Project.swift`), and Bazel workspaces.
 
 ## Build
 
@@ -31,8 +31,14 @@ Flags:
 - `--verbose` print generation details for `mermaid`/`dot`/`terminal` file outputs
 - `--include-tests` include test targets
 
+Tooling requirements by mode/format:
+- SwiftPM (`--mode spm` or `auto` fallback): `swift` in `PATH`
+- Xcode (`--mode xcode` or `auto` Xcode/Tuist path): `plutil` in `PATH`
+- Tuist (`Project.swift` inputs): `tuist` in `PATH`
+- PNG output (`--format png`): Graphviz `dot` in `PATH`
+
 Input detection in `auto` mode:
-1. Prefer `.xcworkspace` / `.xcodeproj` if found under `--path`
+1. Prefer `.xcworkspace` / `.xcodeproj` (or Tuist `Project.swift`) if found under `--path`
 2. Fallback to Bazel workspace markers (`WORKSPACE`, `WORKSPACE.bazel`, `MODULE.bazel`)
 3. Fallback to `Package.swift`
 
@@ -76,6 +82,9 @@ Use explicit Xcode project mode:
 
 ```bash
 ./swift-deps-diagram --mode xcode --project /path/to/App.xcodeproj --format dot --output deps.dot
+
+# Tuist projects are also supported (runs `tuist generate` automatically)
+./swift-deps-diagram --mode xcode --path /path/to/tuist/project --format dot --output deps.dot
 ```
 
 ## Using Bazel
@@ -104,5 +113,5 @@ Include test rules (`*_test`) in Bazel mode:
 ## Exit Codes
 
 - `0`: success
-- `1`: usage/input error (invalid args, missing `Package.swift`)
-- `2`: runtime/tooling error (`swift` not found, dump/decode/write failure)
+- `1`: usage/input error (invalid args, unresolved input markers such as missing `Package.swift` / Xcode project/workspace / Bazel workspace markers)
+- `2`: runtime/tooling/parse/render/output error (for example: missing `swift`/`plutil`/`tuist`/`dot` binaries, command failures, decode/parse failures, or write failures)

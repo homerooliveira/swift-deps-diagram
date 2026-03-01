@@ -8,7 +8,7 @@ This document defines the behavior of `swift-deps-diagram` as a language-agnosti
 
 Supported source ecosystems:
 - SwiftPM (`Package.swift` via `swift package dump-package`)
-- Xcode (`.xcodeproj` and `.xcworkspace`)
+- Xcode (`.xcodeproj` and `.xcworkspace`) plus Tuist (`Project.swift`, generated via `tuist generate`)
 - Bazel (`WORKSPACE`, `WORKSPACE.bazel`, or `MODULE.bazel`)
 
 Scope of this specification:
@@ -29,16 +29,17 @@ Scope of this specification:
 | `--project` | string | `` | Explicit `.xcodeproj` path |
 | `--workspace` | string | `` | Explicit `.xcworkspace` path |
 | `--bazel-targets` | string | `` | Bazel query scope expression |
-| `--mode` | enum | `auto` | `auto|spm|xcode|bazel` |
-| `--format` | enum | `png` | `mermaid|dot|png|terminal` |
-| `--output` | string | `` | Output file path (text formats use stdout when empty) |
-| `--verbose` | bool | `false` | Print generation details for file outputs |
+| `--mode` | enum | `auto` | `auto`, `spm`, `xcode`, `bazel` |
+| `--format` | enum | `png` | `mermaid`, `dot`, `png`, `terminal` |
+| `--output` | string | `` | Output file path (empty means stdout for text formats; `deps.png` for `png`) |
+| `--verbose` | bool | `false` | For text formats, print generation details when writing to file |
 | `--include-tests` | bool | `false` | Include test targets/rules in the graph |
 
 Constraints:
 - `--project` and `--workspace` are mutually exclusive.
 - Positional arguments are rejected.
 - Invalid `--mode` or `--format` values are rejected.
+- `--path` cannot be empty.
 - In `spm` mode, provided Xcode-path flags are ignored with a warning.
 
 ### 2.2 Mode/format validation rules
@@ -65,7 +66,7 @@ Validation order:
 | Requested mode | Resolver behavior |
 |---|---|
 | `spm` | Requires `Package.swift`; returns SPM resolution with package path |
-| `xcode` | Resolves project/workspace; returns Xcode resolution |
+| `xcode` | Resolves project/workspace; if missing and no explicit Xcode flags were provided, falls back to Tuist `Project.swift` and returns Xcode resolution with `TuistPath` |
 | `bazel` | Requires Bazel workspace marker; returns Bazel workspace + normalized target scope |
 | `auto` | Applies precedence: Xcode, then Bazel, then SwiftPM |
 
@@ -81,7 +82,8 @@ Tie-breakers and details:
 - For directory scanning:
   - Choose first lexicographically sorted `.xcworkspace` if any.
   - Otherwise choose first lexicographically sorted `.xcodeproj` if any.
-- If Xcode does not resolve, check Bazel markers.
+  - Otherwise if `Project.swift` exists, return an Xcode resolution with `TuistPath` so the app can generate and re-resolve.
+- If Xcode/Tuist does not resolve, check Bazel markers.
 - If Bazel does not resolve, check `Package.swift`.
 
 ### 3.3 Explicit `--project` / `--workspace` behavior
@@ -110,7 +112,7 @@ Rules:
 
 ### 3.5 Errors for “nothing found”
 
-If `auto` cannot resolve Xcode, Bazel, or SwiftPM markers, resolver returns input-not-found with a combined message indicating all checked marker classes.
+If `auto` cannot resolve Xcode/Tuist, Bazel, or SwiftPM markers, resolver returns input-not-found with a combined message indicating all checked marker classes.
 
 ## 4. Canonical Data Model
 
@@ -194,6 +196,21 @@ Failure classes:
 - Bazel binary not found.
 - Query timeout/failure.
 - Rule-kind parse failure.
+
+### 5.4 Tuist adapter behavior
+
+Behavior:
+- Requires `tuist` available in `PATH`.
+- Triggered only when Xcode resolution returns a non-empty `TuistPath` (`Project.swift` detected).
+- Executes `tuist generate --no-open` in the resolved Tuist directory.
+- Uses a 2-minute timeout.
+- After successful generation, app re-runs Xcode resolution on the same path and requires a non-empty `ProjectPath` before loading via Xcode adapter.
+- `Project.swift` is never parsed directly; the generated `.xcodeproj` is the only source consumed by the Xcode adapter.
+
+Failure classes:
+- `tuist` binary not found.
+- Generate timeout/failure (including stderr details).
+- Runtime failure when generation succeeds but no `.xcodeproj` is resolved.
 
 ## 6. Graph Construction Semantics
 
@@ -306,7 +323,7 @@ For text file output:
 
 Committed behavior contract:
 - PNG success message is emitted on success.
-- Message format: `generated png using dot format at <path>`.
+- Message format: `generated png using dot format at <absolute-path>`.
 
 Also:
 - Verbose file-output messages exist for `mermaid`, `dot`, and `terminal` file outputs.
