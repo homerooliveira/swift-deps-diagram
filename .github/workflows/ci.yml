@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,6 +18,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+
+      - name: Build all packages
+        run: go build ./...
 
       - name: Run tests
         run: go test ./...
